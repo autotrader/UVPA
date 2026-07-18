@@ -1,6 +1,12 @@
 __pycache__/
 *.pyc
 
+# .gitignore kann keine Dateigroesse pruefen (nur Pfade/Namen).
+# Die eigentliche 10MB-Grenze wird per Pre-Commit-Hook durchgesetzt:
+#   git config core.hooksPath .githooks
+# Dateien, die trotzdem schon committet waren, werden hier zusaetzlich
+# einzeln ausgeschlossen, damit sie nicht erneut heruntergeladen/getrackt werden.
+
 # Files exceeding GitHub's 100MiB hard push limit
 2023-03-14/SU_Sitzungsunterlagen_oeffentlich.pdf
 2023-02-14/SU_Sitzungsunterlagen_oeffentlich.pdf

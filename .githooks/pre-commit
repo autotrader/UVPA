@@ -1,0 +1,30 @@
+#!/bin/sh
+# Blocks commits that contain files >= 10MB.
+# .gitignore cannot express a size rule (it only matches paths), so this
+# hook is the actual enforcement point. Enable once per clone with:
+#   git config core.hooksPath .githooks
+
+max_size=10485760  # 10 MiB
+tmpfile=$(mktemp)
+
+git diff --cached --name-only --diff-filter=ACM | while IFS= read -r file; do
+    [ -f "$file" ] || continue
+    size=$(wc -c < "$file" 2>/dev/null)
+    [ -n "$size" ] || continue
+    if [ "$size" -ge "$max_size" ]; then
+        echo "  $file ($((size / 1024 / 1024))MB)" >> "$tmpfile"
+    fi
+done
+
+if [ -s "$tmpfile" ]; then
+    echo "Commit abgelehnt: folgende Datei(en) sind >= 10MB:" >&2
+    cat "$tmpfile" >&2
+    echo "" >&2
+    echo "Entweder aus dem Commit nehmen (git restore --staged <datei>)" >&2
+    echo "oder dauerhaft in .gitignore eintragen." >&2
+    rm -f "$tmpfile"
+    exit 1
+fi
+
+rm -f "$tmpfile"
+exit 0
