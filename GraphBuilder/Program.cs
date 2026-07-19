@@ -175,7 +175,8 @@ void CountEntities(string topId, string text, string? ownVorlage)
             try
             {
                 var list = JsonSerializer.Deserialize<List<string>>(line["themen:".Length..].Trim());
-                themen = list is { Count: > 0 } ? string.Join(",", list) : null;
+                // '|' als Trenner — Themennamen können Kommas enthalten (z. B. "EB77: Reinigung, Abfall, Winterdienst")
+                themen = list is { Count: > 0 } ? string.Join("|", list) : null;
             }
             catch (JsonException) { /* fehlerhafte Frontmatter — Themen auslassen */ }
         }
@@ -261,7 +262,7 @@ void LoadRegistry(string folderName, string nodeType, string idPrefix, string ed
             DateTime.TryParse(item.Erstellt, out var d) ? d : null,
             null, item.RisVorlageNr, null);
         planRows.Add(new PlanRow(planId, nodeType, item.Title, item.Beschreibung, item.QuelleUrl,
-            string.Join(",", item.Themen)));
+            string.Join("|", item.Themen)));
 
         // Verknüpfung mit dem Beziehungsnetz: primär über die exakte
         // Vorlagen-Nummer (falls in der Registry gepflegt), sonst per

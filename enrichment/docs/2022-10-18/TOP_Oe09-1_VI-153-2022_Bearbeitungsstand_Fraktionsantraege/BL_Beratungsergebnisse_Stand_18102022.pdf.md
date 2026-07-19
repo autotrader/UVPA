@@ -1,0 +1,7 @@
+---
+themen: ["Haushalt & Verwaltung"]
+modell: gemini-3.1-flash-lite
+erstellt: 2026-07-19
+---
+
+Die Verwaltung legte dem Umwelt-, Verkehrs- und Planungsausschuss eine Übersicht über den aktuellen Bearbeitungsstand der Fraktionsanträge vor. Das Gremium nahm den Bericht zur Kenntnis. Die Aufstellung dient der Transparenz über den Fortschritt laufender Anträge im Zuständigkeitsbereich des Ausschusses.

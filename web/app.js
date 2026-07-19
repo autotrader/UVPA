@@ -113,7 +113,7 @@ function filterConds(f) {
     conds.push(`d.type_code = '${esc(f.type)}'`);
   if (f.ort) conds.push(
     `EXISTS (SELECT 1 FROM edges e WHERE e.source = d.node_id AND e.target = 'o:${esc(f.ort)}')`);
-  if (f.thema) conds.push(`(',' || d.themen || ',') LIKE '%,${esc(f.thema)},%'`);
+  if (f.thema) conds.push(`('|' || d.themen || '|') LIKE '%|${esc(f.thema)}|%'`);
   if (f.antrag) conds.push(
     `EXISTS (SELECT 1 FROM nodes an WHERE an.id = d.node_id AND an.antragsteller = '${esc(f.antrag)}')`);
   return conds;
@@ -133,7 +133,7 @@ async function runSearch() {
   const includeRegistry = (!f.type || registryKind) && !f.year && !f.ort && !f.antrag;
   const includeDocs = !registryKind;
   const registryThemaCond = f.thema
-    ? `AND (',' || p.themen || ',') LIKE '%,${esc(f.thema)},%'` : "";
+    ? `AND ('|' || p.themen || '|') LIKE '%|${esc(f.thema)}|%'` : "";
   let rows;
   if (query) {
     status(`Suche „${query}“ …`);
@@ -202,13 +202,13 @@ function renderResults(rows, title) {
     if (r.kind === "plan") return `
       <li data-kind="plan" data-plan="${escHtml(r.id)}">
         <div class="r-title"><span class="badge badge-plan">${badge}</span>${escHtml(r.top_label)}</div>
-        <div class="r-meta">${r.themen ? escHtml(r.themen) : ""}</div>
+        <div class="r-meta">${r.themen ? escHtml(themenText(r.themen)) : ""}</div>
       </li>`;
     if (r.kind === "planfile") return `
       <li data-kind="planfile" data-file="${escHtml(r.id)}" data-plan-title="${escHtml(r.top_label)}"
           data-badge="${badge}" data-plan-id="${escHtml(r.plan_id)}">
         <div class="r-title"><span class="badge badge-plan">${badge}</span>${escHtml(r.title)}</div>
-        <div class="r-meta">${escHtml(r.top_label ?? "")}${r.themen ? " · " + escHtml(r.themen) : ""}${r.score != null ? ` · Score ${r.score.toFixed(2)}` : ""}</div>
+        <div class="r-meta">${escHtml(r.top_label ?? "")}${r.themen ? " · " + escHtml(themenText(r.themen)) : ""}${r.score != null ? ` · Score ${r.score.toFixed(2)}` : ""}</div>
       </li>`;
     return `
       <li data-kind="doc" data-doc="${escHtml(r.id)}">
@@ -232,6 +232,11 @@ function renderResults(rows, title) {
 
 function shortLabel(s, max = 70) {
   return s.length > max ? s.slice(0, max - 1).trimEnd() + "…" : s;
+}
+
+/** Themen werden mit '|' gespeichert (Namen können Kommas enthalten) — Anzeige mit ', '. */
+function themenText(s) {
+  return String(s).replaceAll("|", ", ");
 }
 
 function highlight(escapedHtml) {
@@ -339,7 +344,7 @@ async function openDoc(id) {
     <p class="meta">${TYPE_NAMES[tc] ?? tc} · ${d.date ?? ""}${d.pages ? ` · ${d.pages} Seiten` : ""}</p>
     <p class="meta">${escHtml(d.top_label)}${d.vorlage_nr ? " · Vorlage " + escHtml(d.vorlage_nr) : ""}</p>
     ${d.summary ? `<p class="doc-summary">${escHtml(d.summary)}</p>` : ""}
-    ${d.themen ? `<p class="meta">Themen: ${escHtml(d.themen.replaceAll(",", ", "))}</p>` : ""}
+    ${d.themen ? `<p class="meta">Themen: ${escHtml(themenText(d.themen))}</p>` : ""}
     <div class="doc-actions">
       <button id="btn-text" class="active" type="button">Text</button>
       <button id="btn-pdf" type="button">PDF</button>
@@ -389,7 +394,7 @@ async function openPlan(planId) {
   const html = `<div class="doc-head">
     <h3><span class="badge badge-plan">${badge}</span>${escHtml(p.title)}</h3>
     ${p.beschreibung ? `<p class="meta">${escHtml(p.beschreibung)}</p>` : ""}
-    <p class="meta">${p.themen ? escHtml(p.themen) : ""}</p>
+    <p class="meta">${p.themen ? escHtml(themenText(p.themen)) : ""}</p>
     <div class="doc-actions">
       ${p.quelle_url ? `<a href="${escHtml(p.quelle_url)}" target="_blank" rel="noopener">🔗 Quelle (Stadt Erlangen)</a>` : ""}
     </div>
@@ -610,9 +615,9 @@ async function populateFilters() {
   // Themen aus Dokumenten UND Registry (Pläne/Recht) — zeigt nur real Vorhandenes
   const themen = await q(
     `SELECT DISTINCT trim(t) AS thema FROM (
-       SELECT unnest(string_split(themen, ',')) AS t FROM documents WHERE themen IS NOT NULL
+       SELECT unnest(string_split(themen, '|')) AS t FROM documents WHERE themen IS NOT NULL
        UNION ALL
-       SELECT unnest(string_split(themen, ',')) AS t FROM plans WHERE themen IS NOT NULL AND themen != ''
+       SELECT unnest(string_split(themen, '|')) AS t FROM plans WHERE themen IS NOT NULL AND themen != ''
      ) WHERE trim(t) != '' ORDER BY thema`);
   $("f-thema").insertAdjacentHTML("beforeend",
     themen.map((r) => `<option value="${escHtml(r.thema)}">${escHtml(r.thema)}</option>`).join(""));
