@@ -159,8 +159,9 @@ main { flex: 1; display: flex; min-height: 0; }
 .notice {
   background: #fff7e0; border: 1px solid #eda100; border-radius: 8px;
   padding: .6rem .9rem; margin-bottom: .8rem;
-  font-size: .82rem; color: var(--ink-2);
+  font-size: .82rem; color: var(--ink-2); line-height: 1.5;
 }
+.notice a { color: var(--c-top); font-weight: 600; }
 
 .pdf-frame {
   width: 100%; height: 78vh;

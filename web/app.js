@@ -245,10 +245,30 @@ const PDF_SOURCES = [
 ];
 let pdfBlobUrl = null;
 
+/** msg darf einfaches HTML enthalten (z. B. einen Link) — Aufrufer escapt eigene Werte selbst. */
 function notice(msg) {
   const el = $("doc-notice");
-  el.textContent = msg;
+  el.innerHTML = msg;
   el.hidden = !msg;
+}
+
+// Ab dieser Größe wird nicht mehr automatisch geladen — ein HEAD-Request
+// prüft vorab, damit bei sehr großen PDFs kein unnötiger Download anläuft.
+const PDF_SIZE_WARN_BYTES = 12 * 1024 * 1024;
+
+/** Bekannte Dateigröße per HEAD; null = unbekannt (Quelle liefert kein Content-Length). */
+async function fetchDocPdfSize(path) {
+  const p = encodeURI(path);
+  for (const src of PDF_SOURCES) {
+    try {
+      const r = await fetch(src(p), { method: "HEAD" });
+      if (r.ok) {
+        const len = r.headers.get("content-length");
+        return len ? Number(len) : null;
+      }
+    } catch { /* Quelle nicht erreichbar — nächste probieren */ }
+  }
+  return null;
 }
 
 /** PDF-Bytes laden; null = Datei nicht im Repository (oder offline). */
@@ -265,6 +285,19 @@ async function fetchDocPdf(path) {
 
 async function showDocPdf(d) {
   notice("");
+  status("Prüfe Dateigröße …");
+  const size = await fetchDocPdfSize(d.path);
+  if (size != null && size > PDF_SIZE_WARN_BYTES) {
+    const sourceLabel = d.url ? "im Ratsinformationssystem öffnen" : "an der Originalquelle öffnen";
+    const sourceUrl = d.url ?? d.quelle_url;
+    notice(`Dieses PDF ist mit ${(size / 1048576).toFixed(1)} MB sehr groß und wird hier nicht ` +
+      `automatisch geladen. Bitte das Original ${sourceUrl
+        ? `<a href="${escHtml(sourceUrl)}" target="_blank" rel="noopener">${sourceLabel}</a>`
+        : sourceLabel}.`);
+    status(`PDF zu groß für die Inline-Anzeige (${(size / 1048576).toFixed(1)} MB).`);
+    return;
+  }
+
   status("Lade PDF …");
   const bytes = await fetchDocPdf(d.path);
   if (!bytes) {
