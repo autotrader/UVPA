@@ -14,7 +14,8 @@ public sealed record NodeRow(
 
 public sealed record EdgeRow(string Source, string Target, string Type, int Weight);
 
-public sealed record PlanRow(string Id, string Title, string Beschreibung, string? QuelleUrl, string Themen);
+public sealed record PlanRow(
+    string Id, string Kind, string Title, string Beschreibung, string? QuelleUrl, string Themen);
 
 public sealed record PlanFileRow(
     string PlanId, string Titel, string? Path, string? QuelleUrl, int Pages, string? Text);
@@ -35,10 +36,10 @@ public sealed class GraphDb : IDisposable
     public void CreateSchema() => Execute(
         """
         CREATE TABLE nodes (
-            id         VARCHAR PRIMARY KEY,  -- 's:2020-05-19', 't:5046107', 'v:611/327/2020', 'o:Büchenbach', 'b:472', 'p:vep'
-            type       VARCHAR NOT NULL,     -- session | top | vorlage | ort | bplan | plan
+            id         VARCHAR PRIMARY KEY,  -- 's:2020-05-19', 't:5046107', 'v:611/327/2020', 'o:Büchenbach', 'b:472', 'p:vep', 'r:baumschutzverordnung'
+            type       VARCHAR NOT NULL,     -- session | top | vorlage | ort | bplan | plan | recht
             label      VARCHAR NOT NULL,
-            date       DATE,                 -- Sitzungsdatum (nur session/top) bzw. Erstelldatum (plan)
+            date       DATE,                 -- Sitzungsdatum (nur session/top) bzw. Erstelldatum (plan/recht)
             top_nr     VARCHAR,
             vorlage_nr VARCHAR,
             folder     VARCHAR               -- Repo-Pfad für Deep-Links ins Frontend
@@ -47,7 +48,7 @@ public sealed class GraphDb : IDisposable
         CREATE TABLE edges (
             source VARCHAR NOT NULL,
             target VARCHAR NOT NULL,
-            type   VARCHAR NOT NULL,          -- in_session | has_vorlage | references_vorlage | mentions_ort | mentions_bplan | thread | relates_to_plan
+            type   VARCHAR NOT NULL,          -- in_session | has_vorlage | references_vorlage | mentions_ort | mentions_bplan | thread | relates_to_plan | relates_to_recht
             weight INTEGER NOT NULL DEFAULT 1
         );
 
@@ -64,7 +65,8 @@ public sealed class GraphDb : IDisposable
         );
 
         CREATE TABLE plans (
-            id           VARCHAR PRIMARY KEY, -- registry.json "id", ohne 'p:'-Präfix
+            id           VARCHAR PRIMARY KEY, -- '{kind}:{registry.json "id"}', z. B. 'plan:vep', 'recht:baumschutzverordnung'
+            kind         VARCHAR NOT NULL,     -- plan (plaene/registry.json) | recht (recht/registry.json)
             title        VARCHAR NOT NULL,
             beschreibung VARCHAR,
             quelle_url   VARCHAR,
@@ -72,7 +74,7 @@ public sealed class GraphDb : IDisposable
         );
 
         CREATE TABLE plan_files (
-            plan_id    VARCHAR NOT NULL,
+            plan_id    VARCHAR NOT NULL,       -- verweist auf plans.id ('{kind}:{id}')
             titel      VARCHAR,
             path       VARCHAR,                -- Repo-Pfad (plaene/<datei>.pdf), NULL wenn nur externe Quelle
             quelle_url VARCHAR,
@@ -122,7 +124,7 @@ public sealed class GraphDb : IDisposable
         foreach (var p in plans)
         {
             var row = appender.CreateRow();
-            row.AppendValue(p.Id).AppendValue(p.Title).AppendValue(p.Beschreibung)
+            row.AppendValue(p.Id).AppendValue(p.Kind).AppendValue(p.Title).AppendValue(p.Beschreibung)
                .AppendValue(p.QuelleUrl).AppendValue(p.Themen).EndRow();
         }
     }

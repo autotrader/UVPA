@@ -192,66 +192,75 @@ foreach (var (topId, counts) in topEntityCounts)
     }
 }
 
-// ── Phase 4: Kuratierte Pläne (plaene/registry.json) einlesen ────────────────
+// ── Phase 4: Kuratierte externe Registries einlesen (Pläne, Rechtsvorschriften) ──
+// Beide Ordner teilen dasselbe registry.json-Format (siehe PlanRecord) und
+// werden identisch verarbeitet — nur Knotentyp/Präfix/Kantentyp unterscheiden sich.
 
 var planRows = new List<PlanRow>();
 var planFileRows = new List<PlanFileRow>();
-var planFolder = Path.Combine(repoRoot, "plaene");
-var registryFile = Path.Combine(planFolder, "registry.json");
 
-if (File.Exists(registryFile))
+void LoadRegistry(string folderName, string nodeType, string idPrefix, string edgeType)
 {
-    var plans = JsonSerializer.Deserialize<List<PlanRecord>>(File.ReadAllText(registryFile)) ?? [];
-    foreach (var plan in plans)
+    var folder = Path.Combine(repoRoot, folderName);
+    var registryFile = Path.Combine(folder, "registry.json");
+    if (!File.Exists(registryFile))
     {
-        var planId = $"p:{plan.Id}";
-        nodes[planId] = new NodeRow(
-            planId, "plan", plan.Title,
-            DateTime.TryParse(plan.Erstellt, out var d) ? d : null,
-            null, plan.RisVorlageNr, null);
-        planRows.Add(new PlanRow(plan.Id, plan.Title, plan.Beschreibung, plan.QuelleUrl,
-            string.Join(",", plan.Themen)));
+        Console.WriteLine($"Hinweis: {registryFile} nicht gefunden — {folderName} übersprungen.");
+        return;
+    }
+
+    var items = JsonSerializer.Deserialize<List<PlanRecord>>(File.ReadAllText(registryFile)) ?? [];
+    var linkCountBefore = edges.Count(e => e.Type == edgeType);
+    foreach (var item in items)
+    {
+        var nodeId = $"{idPrefix}:{item.Id}";
+        var planId = $"{nodeType}:{item.Id}";  // 'plans.id' — eindeutig über beide Registries hinweg
+        nodes[nodeId] = new NodeRow(
+            nodeId, nodeType, item.Title,
+            DateTime.TryParse(item.Erstellt, out var d) ? d : null,
+            null, item.RisVorlageNr, null);
+        planRows.Add(new PlanRow(planId, nodeType, item.Title, item.Beschreibung, item.QuelleUrl,
+            string.Join(",", item.Themen)));
 
         // Verknüpfung mit dem Beziehungsnetz: primär über die exakte
         // Vorlagen-Nummer (falls in der Registry gepflegt), sonst per
         // Titel-Stichwortabgleich gegen TOP-Titel (grobe Näherung fürs MVP).
-        if (plan.RisVorlageNr is { Length: > 0 } vNr)
+        if (item.RisVorlageNr is { Length: > 0 } vNr)
         {
             var vId = $"v:{EntityExtractor.NormalizeVorlage(vNr)}";
             if (nodes.ContainsKey(vId))
-                edges.Add(new EdgeRow(planId, vId, "relates_to_plan", 1));
+                edges.Add(new EdgeRow(nodeId, vId, edgeType, 1));
         }
         else
         {
-            var keyword = plan.Title.Split(['(', '–', '-'])[0].Trim();
+            var keyword = item.Title.Split(['(', '–', '-'])[0].Trim();
             if (keyword.Length >= 6)
             {
                 foreach (var top in nodes.Values.Where(n =>
                     n.Type == "top" && n.Label.Contains(keyword, StringComparison.OrdinalIgnoreCase)))
                 {
-                    edges.Add(new EdgeRow(planId, top.Id, "relates_to_plan", 1));
+                    edges.Add(new EdgeRow(nodeId, top.Id, edgeType, 1));
                 }
             }
         }
 
-        foreach (var file in plan.Dateien)
+        foreach (var file in item.Dateien)
         {
             var absPath = Path.Combine(repoRoot, file.Pfad);
             var (text, pages) = extractText && File.Exists(absPath)
                 ? PdfText.Extract(absPath) : ("", 0);
             planFileRows.Add(new PlanFileRow(
-                plan.Id, file.Titel, File.Exists(absPath) ? file.Pfad : null,
+                planId, file.Titel, File.Exists(absPath) ? file.Pfad : null,
                 file.QuelleUrl, pages, text.Length > 0 ? text : null));
         }
     }
-    Console.WriteLine($"Pläne: {planRows.Count} aus {registryFile}, " +
-        $"{planFileRows.Count} Dateien, " +
-        $"{edges.Count(e => e.Type == "relates_to_plan")} Verknüpfungen zum Beziehungsnetz.");
+    Console.WriteLine($"{folderName}: {items.Count} aus {registryFile}, " +
+        $"{items.Sum(i => i.Dateien.Count)} Dateien, " +
+        $"{edges.Count(e => e.Type == edgeType) - linkCountBefore} Verknüpfungen zum Beziehungsnetz.");
 }
-else
-{
-    Console.WriteLine($"Hinweis: {registryFile} nicht gefunden — keine Pläne eingelesen.");
-}
+
+LoadRegistry("plaene", "plan", "p", "relates_to_plan");
+LoadRegistry("recht", "recht", "r", "relates_to_recht");
 
 // ── Phase 5: DuckDB schreiben + Thread-Kanten + FTS-Index ────────────────────
 
@@ -273,7 +282,10 @@ using (var db = new GraphDb(dbPath))
     Console.WriteLine($"  Kanten:    {db.Count("edges")}");
     Console.WriteLine($"  Dokumente: {db.Count("documents")} " +
         $"(davon {db.Count("documents WHERE text IS NOT NULL")} mit Volltext)");
-    Console.WriteLine($"  Pläne:     {db.Count("plans")} ({db.Count("plan_files")} Dateien)");
+    Console.WriteLine($"  Pläne:     {db.Count("plans WHERE kind = 'plan'")} " +
+        $"({db.Count("plan_files pf JOIN plans p ON p.id = pf.plan_id WHERE p.kind = 'plan'")} Dateien)");
+    Console.WriteLine($"  Recht:     {db.Count("plans WHERE kind = 'recht'")} " +
+        $"({db.Count("plan_files pf JOIN plans p ON p.id = pf.plan_id WHERE p.kind = 'recht'")} Dateien)");
 }
 
 Console.WriteLine($"Fertig in {sw.Elapsed:mm\\:ss}. " +

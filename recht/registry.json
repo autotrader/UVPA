@@ -1,0 +1,234 @@
+[
+  {
+    "id": "baumschutzverordnung",
+    "title": "Baumschutzverordnung",
+    "beschreibung": "Verordnung der Stadt Erlangen zum Schutz des Baumbestands im Stadtgebiet.",
+    "themen": ["Stadtgrün", "Natur- & Artenschutz"],
+    "quelle_url": "https://erlangen.de/aktuelles/baumschutzverordnung",
+    "dateien": [
+      { "titel": "Baumschutzverordnung", "pfad": "recht/baumschutzverordnung_023_00_baumschutzverordnung.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/023.00_baumschutzverordnung.pdf" },
+      { "titel": "Baumschutzverordnung – Plan", "pfad": "recht/baumschutzverordnung_023_00_baumschutzverordnung_plan.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/023.00_Baumschutzverordnung_Plan.pdf", "hinweis": "Für das 10-MB-Repo-Limit komprimiert (Original 10,5 MB)." }
+    ]
+  },
+  {
+    "id": "gruenanlagensatzung",
+    "title": "Grünanlagensatzung",
+    "beschreibung": "Satzung über die Benutzung der öffentlichen Grünanlagen der Stadt Erlangen.",
+    "themen": ["Stadtgrün"],
+    "quelle_url": "https://erlangen.de/aktuelles/gruenanlagensatzung",
+    "dateien": [
+      { "titel": "Grünanlagensatzung", "pfad": "recht/gruenanlagensatzung_075_00_gruenanlagensatzung.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/075.00_gruenanlagensatzung.pdf" },
+      { "titel": "Grünanlagensatzung – Plan", "pfad": "recht/gruenanlagensatzung_075_00_gruenanlagensatzung_plan.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/075.00_Gruenanlagensatzung_Plan.pdf" }
+    ]
+  },
+  {
+    "id": "landschaftsschutzverordnung",
+    "title": "Landschaftsschutzverordnung",
+    "beschreibung": "Verordnung über Landschaftsschutzgebiete im Gebiet der Stadt Erlangen.",
+    "themen": ["Natur- & Artenschutz", "Stadtgrün"],
+    "quelle_url": "https://erlangen.de/aktuelles/landschaftsschutzverordnung",
+    "dateien": [
+      { "titel": "Landschaftsschutzverordnung", "pfad": "recht/landschaftsschutzverordnung_113_00_landschaftsschutz.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/113_00_landschaftsschutz.pdf" },
+      { "titel": "Landschaftsschutzverordnung – Karte", "pfad": "recht/landschaftsschutzverordnung_113_00_landschaftsschutzkarte.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/113_00_landschaftsschutzkarte.pdf" }
+    ]
+  },
+  {
+    "id": "landschaftsbestandteil-holzweg",
+    "title": "Landschaftsbestandteil Holzweg",
+    "beschreibung": "Verordnung über den geschützten Landschaftsbestandteil „Holzweg“.",
+    "themen": ["Natur- & Artenschutz", "Stadtgrün"],
+    "quelle_url": "https://erlangen.de/aktuelles/landschaftsbestandteil-holzweg",
+    "dateien": [
+      { "titel": "Landschaftsbestandteil Holzweg", "pfad": "recht/landschaftsbestandteil-holzweg_114_10_landschaftsbestandteil_holzweg.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/114.10_landschaftsbestandteil_holzweg.pdf" },
+      { "titel": "Karte Holzweg", "pfad": "recht/landschaftsbestandteil-holzweg_karte_holzweg.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/karte_holzweg.pdf" }
+    ]
+  },
+  {
+    "id": "landschaftsbestandteil-riviera",
+    "title": "Landschaftsbestandteil Riviera",
+    "beschreibung": "Verordnung über den geschützten Landschaftsbestandteil „Riviera“.",
+    "themen": ["Natur- & Artenschutz", "Stadtgrün"],
+    "quelle_url": "https://erlangen.de/aktuelles/landschaftsbestandteil-riviera",
+    "dateien": [
+      { "titel": "Landschaftsbestandteil Riviera", "pfad": "recht/landschaftsbestandteil-riviera_114_20_landschaftsbestandteil_riviera.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/114.20_landschaftsbestandteil_riviera.pdf" },
+      { "titel": "Karte Riviera", "pfad": "recht/landschaftsbestandteil-riviera_karte_riviera.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/karte_riviera.pdf" }
+    ]
+  },
+  {
+    "id": "naturschutz-brucker-lache",
+    "title": "Naturschutzgebiet Brucker Lache",
+    "beschreibung": "Verordnung über das Naturschutzgebiet „Brucker Lache“.",
+    "themen": ["Natur- & Artenschutz"],
+    "quelle_url": "https://erlangen.de/aktuelles/naturschutz-brucker-lache",
+    "dateien": [
+      { "titel": "Naturschutzgebiet Brucker Lache", "pfad": "recht/naturschutz-brucker-lache_310_10_naturschutzgebiet_brucker_lache.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/310.10_naturschutzgebiet_brucker_lache.pdf" },
+      { "titel": "Schutzgebietskarte", "pfad": "recht/naturschutz-brucker-lache_310_10_naturschutzgebiet_brucker_lache_schutzgebietskarte.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/310.10_Naturschutzgebiet_Brucker_Lache_Schutzgebietskarte.pdf" }
+    ]
+  },
+  {
+    "id": "naturschutz-exerzierplatz",
+    "title": "Naturschutzgebiet Exerzierplatz",
+    "beschreibung": "Verordnung über das Naturschutzgebiet „Exerzierplatz“.",
+    "themen": ["Natur- & Artenschutz"],
+    "quelle_url": "https://erlangen.de/aktuelles/naturschutz-exerzierplatz",
+    "dateien": [
+      { "titel": "Naturschutzgebiet Exerzierplatz", "pfad": "recht/naturschutz-exerzierplatz_310_20_naturschutzgebiet_exerzierplatz_pdf.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/310.20_naturschutzgebiet_exerzierplatz.pdf.pdf" },
+      { "titel": "Karte 1", "pfad": "recht/naturschutz-exerzierplatz_310_20_nsg_exerzierplatz_karte_1.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/310.20_nsg_exerzierplatz_karte_1.pdf" },
+      { "titel": "Karte 2", "pfad": "recht/naturschutz-exerzierplatz_310_20_nsg_exerzierplatz_karte_2.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/310.20_nsg_exerzierplatz_karte_2.pdf" }
+    ]
+  },
+  {
+    "id": "entwaesserungssatzung",
+    "title": "Entwässerungssatzung",
+    "beschreibung": "Satzung über die öffentliche Abwasserbeseitigung der Stadt Erlangen.",
+    "themen": ["Wasser & Hochwasser"],
+    "quelle_url": "https://erlangen.de/aktuelles/entwaesserungssatzung",
+    "dateien": [
+      { "titel": "Entwässerungssatzung", "pfad": "recht/entwaesserungssatzung_051_00_entwaesserungssatzung.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/051.00_entwaesserungssatzung.pdf" },
+      { "titel": "Entwässerungssatzung – Plan", "pfad": "recht/entwaesserungssatzung_051_00_entwaesserungssatzung_plan.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/051.00_Entwaesserungssatzung_Plan.pdf" }
+    ]
+  },
+  {
+    "id": "entwaesserungsgebuehren",
+    "title": "Entwässerungsgebühren",
+    "beschreibung": "Satzung über die Erhebung von Gebühren für die Entwässerung.",
+    "themen": ["Wasser & Hochwasser", "Haushalt & Verwaltung"],
+    "quelle_url": "https://erlangen.de/aktuelles/entwaesserungsgebuehren",
+    "dateien": [
+      { "titel": "Entwässerungsgebühren", "pfad": "recht/entwaesserungsgebuehren_051_10_entwaesserungsgebuehren.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/051_10_entwaesserungsgebuehren.pdf" }
+    ],
+    "hinweis": "Zugehörige Gebietskarte (051.10_Entwaesserungsgebuehren_Plan.pdf, 29 Kartenblätter) blieb auch nach Kompression über dem 10-MB-Repo-Limit und wurde nicht mit aufgenommen; Original unter der Quell-URL verfügbar."
+  },
+  {
+    "id": "betriebssatzung-entwaesserungsbetrieb",
+    "title": "Betriebssatzung Entwässerungsbetrieb",
+    "beschreibung": "Betriebssatzung für den Entwässerungsbetrieb der Stadt Erlangen.",
+    "themen": ["Wasser & Hochwasser", "Haushalt & Verwaltung"],
+    "quelle_url": "https://erlangen.de/aktuelles/betriebssatzung-ebe",
+    "dateien": [
+      { "titel": "Betriebssatzung Entwässerungsbetrieb", "pfad": "recht/betriebssatzung-ebe_024_10_betriebssatzung_ebe.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/024.10_betriebssatzung_ebe.pdf" }
+    ]
+  },
+  {
+    "id": "strassenreinigungssatzung",
+    "title": "Straßenreinigungssatzung",
+    "beschreibung": "Satzung über die Straßenreinigung, den Winterdienst und die Erhebung von Gebühren.",
+    "themen": ["EB77: Reinigung, Abfall, Winterdienst"],
+    "quelle_url": "https://erlangen.de/aktuelles/strassenreinigungssatzung",
+    "dateien": [
+      { "titel": "Straßenreinigungssatzung", "pfad": "recht/strassenreinigungssatzung_212_00_strassenreinigungssatzung.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/212.00_strassenreinigungssatzung.pdf" }
+    ]
+  },
+  {
+    "id": "strassenreinigungsverordnung",
+    "title": "Straßenreinigungsverordnung",
+    "beschreibung": "Verordnung über die Straßenreinigungspflicht im Gebiet der Stadt Erlangen.",
+    "themen": ["EB77: Reinigung, Abfall, Winterdienst"],
+    "quelle_url": "https://erlangen.de/aktuelles/strassenreinigungsverordnung",
+    "dateien": [
+      { "titel": "Straßenreinigungsverordnung", "pfad": "recht/strassenreinigungsverordnung_211_00_strassenreinigungsverordnung.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/211.00_strassenreinigungsverordnung.pdf" }
+    ]
+  },
+  {
+    "id": "strassenreinigungsgebuehren",
+    "title": "Straßenreinigungsgebührensatzung",
+    "beschreibung": "Satzung über die Erhebung von Gebühren für die Straßenreinigung.",
+    "themen": ["EB77: Reinigung, Abfall, Winterdienst", "Haushalt & Verwaltung"],
+    "quelle_url": "https://erlangen.de/aktuelles/strassenreinigungsgebuehren",
+    "dateien": [
+      { "titel": "Straßenreinigungsgebührensatzung", "pfad": "recht/strassenreinigungsgebuehren_212_10_strassenreinigungsgebuehren.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/212_10_strassenreinigungsgebuehren.pdf" }
+    ]
+  },
+  {
+    "id": "sondernutzungssatzung",
+    "title": "Sondernutzungssatzung",
+    "beschreibung": "Satzung über Sondernutzungen an öffentlichen Straßen (z. B. Außengastronomie, Baustellen, Werbeanlagen).",
+    "themen": ["Verkehrsführung & Straßenraum", "Innenstadt & Einzelhandel", "Baustellen"],
+    "quelle_url": "https://erlangen.de/aktuelles/sondernutzungssatzung",
+    "dateien": [
+      { "titel": "Sondernutzungssatzung", "pfad": "recht/sondernutzungssatzung_192_00_sondernutzungen.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/192.00_sondernutzungen.pdf" },
+      { "titel": "Sondernutzungssatzung – Plan", "pfad": "recht/sondernutzungssatzung_sondernutzungssatzung_plan.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/sondernutzungssatzung_plan.pdf" }
+    ]
+  },
+  {
+    "id": "sondernutzungsgebuehrensatzung",
+    "title": "Sondernutzungsgebührensatzung",
+    "beschreibung": "Satzung über die Erhebung von Gebühren für Sondernutzungen an öffentlichen Straßen.",
+    "themen": ["Verkehrsführung & Straßenraum", "Innenstadt & Einzelhandel", "Haushalt & Verwaltung"],
+    "quelle_url": "https://erlangen.de/aktuelles/sondernutzungsgebuehrensatzung",
+    "dateien": [
+      { "titel": "Sondernutzungsgebührensatzung", "pfad": "recht/sondernutzungsgebuehrensatzung_192_10_sonu_gebuehren.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/192.10_sonu_gebuehren.pdf" }
+    ]
+  },
+  {
+    "id": "erschliessungsbeitragssatzung",
+    "title": "Erschließungsbeitragssatzung",
+    "beschreibung": "Satzung über die Erhebung von Erschließungsbeiträgen nach dem Baugesetzbuch.",
+    "themen": ["Bauleitplanung", "Haushalt & Verwaltung"],
+    "quelle_url": "https://erlangen.de/aktuelles/erschliessungsbeitragssatzung",
+    "dateien": [
+      { "titel": "Erschließungsbeitragssatzung", "pfad": "recht/erschliessungsbeitragssatzung_057_00_erschliessungsbeitragssatzung.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/057.00_erschliessungsbeitragssatzung.pdf" }
+    ]
+  },
+  {
+    "id": "abfallwirtschaftssatzung",
+    "title": "Abfallwirtschaftssatzung",
+    "beschreibung": "Satzung über die Vermeidung, Verwertung und Entsorgung von Abfällen.",
+    "themen": ["EB77: Reinigung, Abfall, Winterdienst"],
+    "quelle_url": "https://erlangen.de/aktuelles/abfallwirtschaftssatzung",
+    "dateien": [
+      { "titel": "Abfallwirtschaftssatzung", "pfad": "recht/abfallwirtschaftssatzung_010_00_abfallwirtschaftssatzung.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/010.00_abfallwirtschaftssatzung.pdf" }
+    ]
+  },
+  {
+    "id": "abfallwirtschaftsgebuehrensatzung",
+    "title": "Abfallwirtschaftsgebührensatzung",
+    "beschreibung": "Satzung über die Erhebung von Gebühren für die Abfallwirtschaft.",
+    "themen": ["EB77: Reinigung, Abfall, Winterdienst", "Haushalt & Verwaltung"],
+    "quelle_url": "https://erlangen.de/aktuelles/abfallwirtschaftsgebuehrensatzung",
+    "dateien": [
+      { "titel": "Abfallwirtschaftsgebührensatzung", "pfad": "recht/abfallwirtschaftsgebuehrensatzung_010_10_abfallwirtschaftsgebuehren.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/010_10_abfallwirtschaftsgebuehren.pdf" }
+    ]
+  },
+  {
+    "id": "uvpa-beiratssatzung",
+    "title": "Umwelt-, Verkehrs- und Planungsbeirat (Satzung)",
+    "beschreibung": "Satzung des Umwelt-, Verkehrs- und Planungsbeirats (UVPA) der Stadt Erlangen — regelt Zusammensetzung, Aufgaben und Verfahren des Ausschusses selbst.",
+    "themen": [],
+    "quelle_url": "https://erlangen.de/aktuelles/umwelt-verkehrs-planungsbeirat",
+    "dateien": [
+      { "titel": "Satzung Umwelt-, Verkehrs- und Planungsbeirat", "pfad": "recht/umwelt-verkehrs-planungsbeirat_235_00_uvp_beirat.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/235.00_uvp_beirat.pdf" }
+    ]
+  },
+  {
+    "id": "milieuschutz-hertleinstrasse",
+    "title": "Milieuschutz Hertleinstraße",
+    "beschreibung": "Erhaltungssatzung (Milieuschutz) für den Bereich Hertleinstraße nach § 172 BauGB.",
+    "themen": ["Wohnen & Quartiere"],
+    "quelle_url": "https://erlangen.de/aktuelles/milieuschutz-hertleinstrasse",
+    "dateien": [
+      { "titel": "Milieuschutz Hertleinstraße", "pfad": "recht/milieuschutz-hertleinstrasse_130_00_milieuschutz_hertleinstrasse.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/130.00_milieuschutz_hertleinstrasse.pdf" },
+      { "titel": "Milieuschutz Hertleinstraße – Plan", "pfad": "recht/milieuschutz-hertleinstrasse_130_00_milieuschutz_hertleinstrasse_plan.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/130.00_Milieuschutz_Hertleinstrasse_Plan.pdf" }
+    ]
+  },
+  {
+    "id": "milieuschutz-jaminstrasse",
+    "title": "Milieuschutz Jaminstraße",
+    "beschreibung": "Erhaltungssatzung (Milieuschutz) für den Bereich Jaminstraße nach § 172 BauGB.",
+    "themen": ["Wohnen & Quartiere"],
+    "quelle_url": "https://erlangen.de/aktuelles/milieuschutz-jaminstrasse",
+    "dateien": [
+      { "titel": "Milieuschutz Jaminstraße", "pfad": "recht/milieuschutz-jaminstrasse_130_10_milieuschutz_jaminstrasse.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/130.10_milieuschutz_jaminstrasse.pdf" }
+    ]
+  },
+  {
+    "id": "wasserschutzgebiet-erlangen-moehrendorf-bubenreuth",
+    "title": "Wasserschutzgebiet Erlangen-Möhrendorf-Bubenreuth",
+    "beschreibung": "Verordnung über das Wasserschutzgebiet für die Trinkwassergewinnung Erlangen-Möhrendorf-Bubenreuth.",
+    "themen": ["Wasser & Hochwasser"],
+    "quelle_url": "https://erlangen.de/aktuelles/wasserschutzgebiet-2",
+    "dateien": [
+      { "titel": "Wasserschutzgebiet Erlangen-Möhrendorf-Bubenreuth", "pfad": "recht/wasserschutzgebiet-2_250_00_wasserschutz_erlangen_moehrendorf_bubenreuth.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/250.00_wasserschutz_erlangen_moehrendorf_bubenreuth.pdf" }
+    ]
+  }
+]

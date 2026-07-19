@@ -20,6 +20,7 @@ const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const TYPE_NAMES = { EI: "Einladung", NI: "Niederschrift", SU: "Sitzungsunterlagen",
                      BL: "Beschluss", VO: "Beschlussvorlage", AN: "Anlage" };
+const REGISTRY_BADGE = { plan: "PLAN", recht: "RECHT" };
 
 // ── Zugangs-Gate (einfacher Frontend-Schutz, keine Verschlüsselung) ─────────
 // Der Deploy-Workflow legt auth.json mit einem PBKDF2-Hash von SITE_PASSWORD
@@ -120,11 +121,12 @@ async function runSearch() {
   lastTerms = query.split(/\s+/).map((w) => w.replace(/[^\p{L}\p{N}\/.\-]/gu, ""))
                    .filter((w) => w.length >= 3).slice(0, 8);
 
-  // Pläne haben kein Sitzungsdatum/keinen Stadtteil-Bezug im Beziehungsnetz —
-  // bei aktivem Jahres- oder Stadtteilfilter tauchen sie in der Trefferliste
-  // konsequent nicht auf (Filter-Bedeutung sonst irreführend).
-  const includePlans = (!f.type || f.type === "PLAN") && !f.year && !f.ort;
-  const includeDocs = f.type !== "PLAN";
+  // Pläne/Rechtsvorschriften haben kein Sitzungsdatum/keinen Stadtteil-Bezug
+  // im Beziehungsnetz — bei aktivem Jahres- oder Stadtteilfilter tauchen sie
+  // in der Trefferliste konsequent nicht auf (Filter-Bedeutung sonst irreführend).
+  const registryKind = f.type === "PLAN" ? "plan" : f.type === "RECHT" ? "recht" : null;
+  const includeRegistry = (!f.type || registryKind) && !f.year && !f.ort;
+  const includeDocs = !registryKind;
   let rows;
   if (query) {
     status(`Suche „${query}“ …`);
@@ -151,26 +153,29 @@ async function runSearch() {
       for (const r of rows) r.snippet = byId[r.id];
     }
 
-    if (includePlans) {
+    if (includeRegistry) {
+      const kindCond = registryKind ? `AND p.kind = '${esc(registryKind)}'` : "";
       const planRows = await q(
-        `SELECT id, 'planfile' AS kind, title, plan_id, top_label, themen, score FROM (
-           SELECT pf.rowid::VARCHAR AS id, pf.titel AS title, pf.plan_id,
+        `SELECT id, 'planfile' AS kind, pkind, title, plan_id, top_label, themen, score FROM (
+           SELECT pf.rowid::VARCHAR AS id, p.kind AS pkind, pf.titel AS title, pf.plan_id,
                   p.title AS top_label, p.themen,
                   fts_main_plan_files.match_bm25(pf.rowid, '${esc(query)}') AS score
            FROM plan_files pf JOIN plans p ON p.id = pf.plan_id
+           WHERE 1=1 ${kindCond}
          ) WHERE score IS NOT NULL ORDER BY score DESC LIMIT 15`);
       rows = [...rows, ...planRows].sort((a, b) => b.score - a.score);
     }
     renderResults(rows, `${rows.length} Treffer`);
     status(`${rows.length} Treffer für „${query}“.`);
-  } else if (f.type === "PLAN") {
+  } else if (registryKind) {
     rows = (f.year || f.ort) ? [] : await q(
-      `SELECT p.id, 'plan' AS kind, p.title AS top_label, p.themen, p.beschreibung
-       FROM plans p ORDER BY p.title`);
-    renderResults(rows, `${rows.length} Pläne & Konzepte`);
+      `SELECT p.id, 'plan' AS kind, p.kind AS pkind, p.title AS top_label, p.themen, p.beschreibung
+       FROM plans p WHERE p.kind = '${esc(registryKind)}' ORDER BY p.title`);
+    const label = registryKind === "recht" ? "Rechtsvorschriften" : "Pläne & Konzepte";
+    renderResults(rows, `${rows.length} ${label}`);
     status(f.year || f.ort
-      ? "Pläne haben kein Sitzungsjahr/keinen Stadtteil-Bezug — Jahres-/Stadtteilfilter zurücksetzen, um sie zu sehen."
-      : `${rows.length} Pläne & Konzepte angezeigt.`);
+      ? `${label} haben kein Sitzungsjahr/keinen Stadtteil-Bezug — Jahres-/Stadtteilfilter zurücksetzen, um sie zu sehen.`
+      : `${rows.length} ${label} angezeigt.`);
   } else {
     const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
     rows = await q(
@@ -186,14 +191,16 @@ async function runSearch() {
 function renderResults(rows, title) {
   $("results-title").textContent = title;
   $("results-list").innerHTML = rows.map((r) => {
+    const badge = REGISTRY_BADGE[r.pkind] ?? "PLAN";
     if (r.kind === "plan") return `
       <li data-kind="plan" data-plan="${escHtml(r.id)}">
-        <div class="r-title"><span class="badge badge-plan">PLAN</span>${escHtml(r.top_label)}</div>
+        <div class="r-title"><span class="badge badge-plan">${badge}</span>${escHtml(r.top_label)}</div>
         <div class="r-meta">${r.themen ? escHtml(r.themen) : ""}</div>
       </li>`;
     if (r.kind === "planfile") return `
-      <li data-kind="planfile" data-file="${escHtml(r.id)}" data-plan-title="${escHtml(r.top_label)}">
-        <div class="r-title"><span class="badge badge-plan">PLAN</span>${escHtml(r.title)}</div>
+      <li data-kind="planfile" data-file="${escHtml(r.id)}" data-plan-title="${escHtml(r.top_label)}"
+          data-badge="${badge}" data-plan-id="${escHtml(r.plan_id)}">
+        <div class="r-title"><span class="badge badge-plan">${badge}</span>${escHtml(r.title)}</div>
         <div class="r-meta">${escHtml(r.top_label ?? "")}${r.themen ? " · " + escHtml(r.themen) : ""}${r.score != null ? ` · Score ${r.score.toFixed(2)}` : ""}</div>
       </li>`;
     return `
@@ -209,7 +216,8 @@ function renderResults(rows, title) {
       $("results-list").querySelector("li.active")?.classList.remove("active");
       li.classList.add("active");
       if (li.dataset.kind === "plan") openPlan(li.dataset.plan);
-      else if (li.dataset.kind === "planfile") openPlanFile(li.dataset.file, li.dataset.planTitle);
+      else if (li.dataset.kind === "planfile")
+        openPlanFile(li.dataset.file, li.dataset.planTitle, li.dataset.badge, li.dataset.planId);
       else openDoc(li.dataset.doc);
     });
 }
@@ -313,22 +321,29 @@ async function openDoc(id) {
     ?.scrollIntoView({ block: "center" });
 }
 
-/** Externer Plan/Konzept (plaene/registry.json): Übersicht + Dateien + verknüpfte TOPs. */
+/** Externer Plan/Konzept oder Rechtsvorschrift: Übersicht + Dateien + verknüpfte TOPs. */
 async function openPlan(planId) {
   const [p] = await q(
-    `SELECT id, title, beschreibung, quelle_url, themen FROM plans WHERE id = '${esc(planId)}'`);
+    `SELECT id, kind, title, beschreibung, quelle_url, themen FROM plans WHERE id = '${esc(planId)}'`);
   if (!p) return;
   activateTab("doc");
 
   const files = await q(
     `SELECT rowid::VARCHAR AS id, titel, path, quelle_url, pages, (text IS NOT NULL) AS has_text
      FROM plan_files WHERE plan_id = '${esc(planId)}' ORDER BY titel`);
+  // p.id hat die Form '{kind}:{registry-id}', der zugehörige Netzwerk-Knoten
+  // nutzt dasselbe Suffix mit Kurzpräfix ('p:' | 'r:').
+  const nodePrefix = p.kind === "recht" ? "r" : "p";
+  const registryLocalId = p.id.slice(p.kind.length + 1);
+  const relEdgeType = p.kind === "recht" ? "relates_to_recht" : "relates_to_plan";
   const related = await q(
     `SELECT n.label, n.date::VARCHAR AS date FROM edges e JOIN nodes n ON n.id = e.target
-     WHERE e.source = 'p:${esc(planId)}' AND e.type = 'relates_to_plan' ORDER BY n.date DESC`);
+     WHERE e.source = '${nodePrefix}:${esc(registryLocalId)}' AND e.type = '${relEdgeType}'
+     ORDER BY n.date DESC`);
 
+  const badge = REGISTRY_BADGE[p.kind] ?? "PLAN";
   const html = `<div class="doc-head">
-    <h3><span class="badge badge-plan">PLAN</span>${escHtml(p.title)}</h3>
+    <h3><span class="badge badge-plan">${badge}</span>${escHtml(p.title)}</h3>
     ${p.beschreibung ? `<p class="meta">${escHtml(p.beschreibung)}</p>` : ""}
     <p class="meta">${p.themen ? escHtml(p.themen) : ""}</p>
     <div class="doc-actions">
@@ -349,20 +364,21 @@ async function openPlan(planId) {
 
   $("doc-view").innerHTML = html;
   for (const a of $("doc-view").querySelectorAll("[data-plan-file]"))
-    a.addEventListener("click", (ev) => { ev.preventDefault(); openPlanFile(a.dataset.planFile, p.title); });
+    a.addEventListener("click", (ev) => { ev.preventDefault(); openPlanFile(a.dataset.planFile, p.title, badge, p.id); });
 }
 
-async function openPlanFile(fileId, planTitle) {
+async function openPlanFile(fileId, planTitle, badge = "PLAN", planId = null) {
   const [f] = await q(
     `SELECT titel, path, quelle_url, pages, text FROM plan_files WHERE rowid = ${Number(fileId)}`);
   if (!f) return;
   const html = `<div class="doc-head">
-    <h3><span class="badge badge-plan">PLAN</span>${escHtml(f.titel)}</h3>
+    <h3><span class="badge badge-plan">${badge}</span>${escHtml(f.titel)}</h3>
     <p class="meta">${escHtml(planTitle)}${f.pages ? ` · ${f.pages} Seiten` : ""}</p>
     <div class="doc-actions">
       <button id="btn-text" class="active" type="button">Text</button>
       ${f.path ? `<button id="btn-pdf" type="button">PDF</button>` : ""}
       ${f.quelle_url ? `<a href="${escHtml(f.quelle_url)}" target="_blank" rel="noopener">⬇ Original</a>` : ""}
+      ${planId ? `<button id="btn-back-plan" type="button">↩ Übersicht „${escHtml(shortLabel(planTitle, 30))}“</button>` : ""}
     </div>
   </div>
   <div id="doc-notice" class="notice" hidden></div>
@@ -370,6 +386,7 @@ async function openPlanFile(fileId, planTitle) {
   $("doc-view").innerHTML = html;
   renderDocText(f);
   if (f.path) $("btn-pdf").addEventListener("click", () => showDocPdf(f));
+  if (planId) $("btn-back-plan").addEventListener("click", () => openPlan(planId));
   $("btn-text").addEventListener("click", () => {
     renderDocText(f);
     $("btn-text").classList.add("active");
@@ -395,8 +412,12 @@ function renderDocText(d) {
 
 // ── Netzwerk-Ansicht (Kontext) ───────────────────────────────────────────────
 
-const COLORS = { top: "#2a78d6", session: "#008300", ort: "#e87ba4", vorlage: "#eda100", bplan: "#1baf7a", plan: "#4a3aa7" };
-const SHAPES = { top: "ellipse", session: "round-rectangle", ort: "triangle", vorlage: "diamond", bplan: "hexagon", plan: "star" };
+// "plan" und "recht" teilen sich die 7. Farbe (violett) — beide sind externe
+// kuratierte Quellen; sieben unterscheidbare Farben sprengen die Palette
+// (siehe dataviz-Skill: >4 Slots im All-Pairs-Kontext), daher trägt hier die
+// Form die Unterscheidung, nicht die Farbe.
+const COLORS = { top: "#2a78d6", session: "#008300", ort: "#e87ba4", vorlage: "#eda100", bplan: "#1baf7a", plan: "#4a3aa7", recht: "#4a3aa7" };
+const SHAPES = { top: "ellipse", session: "round-rectangle", ort: "triangle", vorlage: "diamond", bplan: "hexagon", plan: "star", recht: "rectangle" };
 
 let cy = null;
 
@@ -427,16 +448,17 @@ function initCy() {
       { selector: 'edge[type="references_vorlage"]', style: { "line-style": "dashed" } },
       { selector: 'edge[type="thread"]', style: {
           "line-color": "#eb6834", width: 3, opacity: 0.95 } },
-      { selector: 'edge[type="relates_to_plan"]', style: {
+      { selector: 'edge[type="relates_to_plan"], edge[type="relates_to_recht"]', style: {
           "line-color": "#4a3aa7", "line-style": "dashed", width: 2, opacity: 0.85 } },
     ],
   });
   // Klick im Graphen → Dokumente dieses Knotens in der Ergebnisliste
   cy.on("tap", "node", async (ev) => {
     const id = ev.target.id();
-    if (ev.target.data("type") === "plan") {
+    const type = ev.target.data("type");
+    if (type === "plan" || type === "recht") {
       await expandNode(id);
-      return openPlan(id.slice(2));
+      return openPlan(`${type}:${id.slice(2)}`);
     }
     await expandNode(id);
     const rows = await q(

@@ -200,6 +200,7 @@ ul.plan-files a:hover { text-decoration: underline; }
 .chip-ort     { background: var(--c-ort); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
 .chip-bplan   { background: var(--c-bplan); clip-path: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0 50%); }
 .chip-plan    { background: var(--c-plan); clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+.chip-recht   { background: var(--c-plan); border-radius: 2px; }
 .chip-thread  { background: var(--c-thread); height: 3px; border-radius: 2px; }
 
 footer {
