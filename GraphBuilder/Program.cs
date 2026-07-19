@@ -192,7 +192,68 @@ foreach (var (topId, counts) in topEntityCounts)
     }
 }
 
-// ── Phase 4: DuckDB schreiben + Thread-Kanten + FTS-Index ────────────────────
+// ── Phase 4: Kuratierte Pläne (plaene/registry.json) einlesen ────────────────
+
+var planRows = new List<PlanRow>();
+var planFileRows = new List<PlanFileRow>();
+var planFolder = Path.Combine(repoRoot, "plaene");
+var registryFile = Path.Combine(planFolder, "registry.json");
+
+if (File.Exists(registryFile))
+{
+    var plans = JsonSerializer.Deserialize<List<PlanRecord>>(File.ReadAllText(registryFile)) ?? [];
+    foreach (var plan in plans)
+    {
+        var planId = $"p:{plan.Id}";
+        nodes[planId] = new NodeRow(
+            planId, "plan", plan.Title,
+            DateTime.TryParse(plan.Erstellt, out var d) ? d : null,
+            null, plan.RisVorlageNr, null);
+        planRows.Add(new PlanRow(plan.Id, plan.Title, plan.Beschreibung, plan.QuelleUrl,
+            string.Join(",", plan.Themen)));
+
+        // Verknüpfung mit dem Beziehungsnetz: primär über die exakte
+        // Vorlagen-Nummer (falls in der Registry gepflegt), sonst per
+        // Titel-Stichwortabgleich gegen TOP-Titel (grobe Näherung fürs MVP).
+        if (plan.RisVorlageNr is { Length: > 0 } vNr)
+        {
+            var vId = $"v:{EntityExtractor.NormalizeVorlage(vNr)}";
+            if (nodes.ContainsKey(vId))
+                edges.Add(new EdgeRow(planId, vId, "relates_to_plan", 1));
+        }
+        else
+        {
+            var keyword = plan.Title.Split(['(', '–', '-'])[0].Trim();
+            if (keyword.Length >= 6)
+            {
+                foreach (var top in nodes.Values.Where(n =>
+                    n.Type == "top" && n.Label.Contains(keyword, StringComparison.OrdinalIgnoreCase)))
+                {
+                    edges.Add(new EdgeRow(planId, top.Id, "relates_to_plan", 1));
+                }
+            }
+        }
+
+        foreach (var file in plan.Dateien)
+        {
+            var absPath = Path.Combine(repoRoot, file.Pfad);
+            var (text, pages) = extractText && File.Exists(absPath)
+                ? PdfText.Extract(absPath) : ("", 0);
+            planFileRows.Add(new PlanFileRow(
+                plan.Id, file.Titel, File.Exists(absPath) ? file.Pfad : null,
+                file.QuelleUrl, pages, text.Length > 0 ? text : null));
+        }
+    }
+    Console.WriteLine($"Pläne: {planRows.Count} aus {registryFile}, " +
+        $"{planFileRows.Count} Dateien, " +
+        $"{edges.Count(e => e.Type == "relates_to_plan")} Verknüpfungen zum Beziehungsnetz.");
+}
+else
+{
+    Console.WriteLine($"Hinweis: {registryFile} nicht gefunden — keine Pläne eingelesen.");
+}
+
+// ── Phase 5: DuckDB schreiben + Thread-Kanten + FTS-Index ────────────────────
 
 using (var db = new GraphDb(dbPath))
 {
@@ -200,6 +261,8 @@ using (var db = new GraphDb(dbPath))
     db.InsertNodes(nodes.Values);
     db.InsertEdges(edges);
     db.InsertDocuments(finalDocs);
+    db.InsertPlans(planRows);
+    db.InsertPlanFiles(planFileRows);
     db.CreateThreadEdges();
     if (extractText)
         db.CreateFtsIndex();
@@ -210,6 +273,7 @@ using (var db = new GraphDb(dbPath))
     Console.WriteLine($"  Kanten:    {db.Count("edges")}");
     Console.WriteLine($"  Dokumente: {db.Count("documents")} " +
         $"(davon {db.Count("documents WHERE text IS NOT NULL")} mit Volltext)");
+    Console.WriteLine($"  Pläne:     {db.Count("plans")} ({db.Count("plan_files")} Dateien)");
 }
 
 Console.WriteLine($"Fertig in {sw.Elapsed:mm\\:ss}. " +

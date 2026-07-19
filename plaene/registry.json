@@ -1,0 +1,184 @@
+[
+  {
+    "id": "vep",
+    "title": "Verkehrsentwicklungsplan (VEP) 2030",
+    "beschreibung": "Der Verkehrsentwicklungs- und Mobilitätsplan 2030 definiert Ziele und Strategien der Mobilität in Erlangen für die nächsten zehn bis 15 Jahre.",
+    "erstellt": "2020-12-01",
+    "themen": ["Bauleitplanung", "Radverkehr", "Fußverkehr", "ÖPNV & Bahn", "Parken"],
+    "quelle_url": "https://erlangen.de/aktuelles/vep",
+    "dateien": [
+      { "titel": "Kurzfassung", "pfad": "plaene/vep_kurzfassung_2020.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Bauen%20&%20Planen/Verkehr/613_t_VEP_Kurzfassung.pdf" },
+      { "titel": "Langfassung", "pfad": "plaene/vep_langfassung_2020.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Bauen%20&%20Planen/Verkehr/613_t_VEP_Langfassung.pdf", "hinweis": "Für das 10-MB-Repo-Limit komprimiert (Original 16,5 MB)." }
+    ]
+  },
+  {
+    "id": "nvp-2016",
+    "title": "Nahverkehrsplan (NVP) 2016–2021",
+    "beschreibung": "Legt Handlungsfelder und Zielsetzungen im Bereich des öffentlichen Nahverkehrs fest. Rechtlich vorgeschriebenes Planungsinstrument der Kommune. Dies ist die zuletzt von der Stadt veröffentlichte Fassung; die Fortschreibung NVP 2025 lag zum Zeitpunkt der Erfassung (Sommer 2026) den Verbänden zur Kommentierung vor und war noch nicht als PDF verfügbar.",
+    "erstellt": "2016-01-01",
+    "themen": ["ÖPNV & Bahn"],
+    "quelle_url": "https://erlangen.de/aktuelles/forum-nahverkehrsplan",
+    "dateien": [
+      { "titel": "Nahverkehrsplan 2016–2021", "pfad": "plaene/nahverkehrsplan_2016-2021.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Bauen%20&%20Planen/Verkehr/Forum%20Nahverkehrsplan/nahverkehrsplan_erlangen_2016-2021.pdf" },
+      { "titel": "Forum Nahverkehrsplan – Präsentation 19.07.2023 (Fortschreibungsprozess)", "pfad": "plaene/nvp_forum_praesentation_2023-07-19.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Bauen%20&%20Planen/Verkehr/Forum%20Nahverkehrsplan/praesentation_19.07.2023_-_nahverkehrsplan.pdf" }
+    ],
+    "hinweis": "NVP 2025 (Fortschreibung) noch nicht öffentlich als Dokument verfügbar, Stand der Prüfung 2026-07-19 — bei künftigem Sync erneut prüfen."
+  },
+  {
+    "id": "verkehrskonzept-erlangen-sued",
+    "title": "Verkehrskonzept Erlangen Süd",
+    "beschreibung": "Zeigt auf, wie Siemens Campus, Technische und Naturwissenschaftliche Fakultät umweltfreundlich und nachhaltig an den Verkehr angebunden werden können.",
+    "erstellt": "2024-04-02",
+    "themen": ["Radverkehr", "Fußverkehr", "ÖPNV & Bahn", "Verkehrsführung & Straßenraum"],
+    "quelle_url": "https://erlangen.de/aktuelles/verkehrskonzept-sued",
+    "ris_vorlage": "https://ratsinfo.erlangen.de/vo0050.asp?__kvonr=2139435",
+    "dateien": []
+  },
+  {
+    "id": "zukunftsplan-fahrradstadt",
+    "title": "Zukunftsplan Fahrradstadt",
+    "beschreibung": "Grundlage für die Entwicklung des Radverkehrs in Erlangen in den kommenden Jahren.",
+    "erstellt": "2021-02-24",
+    "themen": ["Radverkehr"],
+    "ris_vorlage": "https://ratsinfo.erlangen.de/vo0050.asp?__kvonr=2135126",
+    "dateien": []
+  },
+  {
+    "id": "fahrradstrassen",
+    "title": "Fahrradstraßen in Erlangen",
+    "beschreibung": "Übersicht der ausgewiesenen Fahrradstraßen im Stadtgebiet.",
+    "themen": ["Radverkehr"],
+    "quelle_url": "https://erlangen.de/aktuelles/fahrradstrassen",
+    "dateien": [
+      { "titel": "Fahrradstraßen in Erlangen", "pfad": "plaene/fahrradstrassen_erlangen.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Bauen%20&%20Planen/Verkehr/Radverkehr/fahrradstrassen_in_erlangen.pdf" }
+    ]
+  },
+  {
+    "id": "plannetz-radverkehr",
+    "title": "Plannetz Radverkehr",
+    "beschreibung": "Karte mit dem Radverkehrsnetz (Vorlage 613/249/2019).",
+    "erstellt": "2019-06-01",
+    "themen": ["Radverkehr"],
+    "ris_vorlage_nr": "613/249/2019",
+    "dateien": [
+      { "titel": "Plannetz Radverkehr", "pfad": "plaene/plannetz_radverkehr_2019.pdf", "quelle_url": "https://ratsinfo.erlangen.de/getfile.asp?id=18169130&type=do" }
+    ]
+  },
+  {
+    "id": "plannetz-fussverkehr",
+    "title": "Plannetz Fußverkehr",
+    "beschreibung": "Karte mit dem Fußverkehrsnetz (Vorlage 613/201/2018).",
+    "erstellt": "2018-11-01",
+    "themen": ["Fußverkehr"],
+    "ris_vorlage_nr": "613/201/2018",
+    "dateien": [
+      { "titel": "Plannetz Fußverkehr", "pfad": "plaene/plannetz_fussverkehr_2018.pdf", "quelle_url": "https://ratsinfo.erlangen.de/getfile.asp?id=18158013&type=do" }
+    ]
+  },
+  {
+    "id": "parkraumkonzept",
+    "title": "Parkraumkonzept (Forum Parkraummanagement)",
+    "beschreibung": "Gezielte Lenkung des ruhenden Verkehrs mit organisatorischen, verkehrsrechtlichen oder baulichen Mitteln.",
+    "erstellt": "2024-05-07",
+    "themen": ["Parken"],
+    "quelle_url": "https://erlangen.de/aktuelles/forum-parkraummanagement",
+    "dateien": [],
+    "hinweis": "Kein zusammenfassendes PDF, nur laufende Protokolle/Präsentationen des Forums auf der Quellseite."
+  },
+  {
+    "id": "parkraumkonzept-innenstadt",
+    "title": "Parkraumkonzept Innenstadt",
+    "beschreibung": "Für die Erlanger Innenstadt erarbeitetes Parkraumkonzept, im Pilotprojekt getestet. Ziel: Reduzierung Gehwegparken, Ladezonen, neue Parkregelung.",
+    "erstellt": "2024-04-09",
+    "themen": ["Parken", "Innenstadt & Einzelhandel"],
+    "ris_vorlagen": [
+      "https://ratsinfo.erlangen.de/vo0050.asp?__kvonr=2134190",
+      "https://ratsinfo.erlangen.de/vo0050.asp?__kvonr=2137304"
+    ],
+    "dateien": [],
+    "hinweis": "Bürgerbeteiligungsseite erlangen.de/mitgestalten/40812875 aus der Quelldatei ist 2026-07-19 nicht mehr erreichbar (404); RIS-Vorlagen als Ersatzquelle geprüft und aktiv."
+  },
+  {
+    "id": "parkgebuehrenordnung",
+    "title": "Parkgebührenverordnung",
+    "beschreibung": "Verordnung der Stadt Erlangen über Parkgebühren, mit Lageplan der Gebührenzonen.",
+    "erstellt": "2023-11-30",
+    "themen": ["Parken"],
+    "quelle_url": "https://erlangen.de/aktuelles/parkgebuehrenordnung",
+    "dateien": [
+      { "titel": "Parkgebührenordnung", "pfad": "plaene/parkgebuehrenordnung_2023.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/150_00_parkgebuehren.pdf" },
+      { "titel": "Lageplan Gebührenzonen", "pfad": "plaene/parkgebuehrenordnung_plan_2023.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/150_00_parkgebuehren_plan.pdf" }
+    ]
+  },
+  {
+    "id": "stellplatzsatzung",
+    "title": "Stellplatzsatzung",
+    "beschreibung": "Satzung über die Herstellung von Kraftfahrzeugstellplätzen und Fahrradabstellplätzen, mit Lageplan der Zonen für Ablösebeträge.",
+    "erstellt": "2023-12-14",
+    "themen": ["Parken", "Radverkehr", "Bauleitplanung"],
+    "quelle_url": "https://erlangen.de/aktuelles/stellplatzsatzung",
+    "dateien": [
+      { "titel": "Stellplatzsatzung", "pfad": "plaene/stellplatzsatzung_2023.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/206_00_stellplatzsatzung.pdf" },
+      { "titel": "Lageplan Ablösezonen", "pfad": "plaene/stellplatzsatzung_plan_2023.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/206.00_stellplatzsatzung_plan.pdf", "hinweis": "Für das 10-MB-Repo-Limit komprimiert (Original 17,7 MB)." }
+    ]
+  },
+  {
+    "id": "machbarkeitsstudie-radschnellverbindung",
+    "title": "Machbarkeitsstudie Radschnellverbindung",
+    "beschreibung": "Machbarkeitsstudie für Radschnellverbindungen (RSV) zwischen Erlangen und Nürnberg, erstellt für die Stadt Nürnberg.",
+    "erstellt": "2017-08-01",
+    "themen": ["Radverkehr"],
+    "quelle_url": "https://www.nuernberg.de/imperia/md/verkehrsplanung/dokumente/endbericht_machbarkeitsstudie_radschnellverbindungen.pdf",
+    "dateien": [
+      { "titel": "Endbericht Machbarkeitsstudie", "pfad": "plaene/machbarkeitsstudie_radschnellverbindung_nuernberg_2017.pdf", "quelle_url": "https://www.nuernberg.de/imperia/md/verkehrsplanung/dokumente/endbericht_machbarkeitsstudie_radschnellverbindungen.pdf", "hinweis": "Für das 10-MB-Repo-Limit komprimiert (Original 18,5 MB)." }
+    ],
+    "ris_vorlage_extern": "https://online-service2.nuernberg.de/buergerinfo/vo0050.asp?__kvonr=22501"
+  },
+  {
+    "id": "machbarkeitsstudie-aurachtalbahn",
+    "title": "Machbarkeitsstudie Aurachtalbahn",
+    "beschreibung": "Machbarkeitsstudie zur Reaktivierung der Aurachtalbahn.",
+    "erstellt": "2022-07-26",
+    "themen": ["ÖPNV & Bahn"],
+    "ris_vorlage": "https://ratsinfo.erlangen.de/vo0050.asp?__kvonr=2137343",
+    "dateien": []
+  },
+  {
+    "id": "strasse-der-zukunft",
+    "title": "Straße der Zukunft",
+    "beschreibung": "Abschluss des Forschungsprojekts „Straße der Zukunft“ zur Zukunft des Straßenraums im Quartier; Siemens Campus als Modellquartier.",
+    "erstellt": "2022-09-01",
+    "themen": ["Verkehrsführung & Straßenraum", "Innenstadt & Einzelhandel"],
+    "ris_top": "https://ratsinfo.erlangen.de/to0050.asp?__ktonr=5059473",
+    "dateien": []
+  },
+  {
+    "id": "fussverkehrskonzept",
+    "title": "Fußverkehrskonzept für die Gesamtstadt",
+    "beschreibung": "Gesamtstädtisches Fußverkehrskonzept.",
+    "themen": ["Fußverkehr"],
+    "quelle_url": "https://erlangen.de/aktuelles/fussverkehrskonzept-fuer-die-gesamtstadt",
+    "dateien": [],
+    "hinweis": "Quell-URL aus der Ursprungsliste (…/fussverkehrskonzept-fuer-die-gesamtstadt) lieferte 2026-07-19 einen 404; die zugehörigen Teilkonzept-PDFs (Innenstadt, Tennenlohe, Gesamtstadt) liegen bereits als Sitzungsanlagen im UVPA-Repo (TOP 613/241/2023, Sitzung 2023-07-25) und sind darüber durchsuchbar."
+  },
+  {
+    "id": "mobilitaetskonzept-fau",
+    "title": "Mobilitätskonzept der FAU",
+    "beschreibung": "Mobilitätskonzept der Friedrich-Alexander-Universität (Green Office).",
+    "erstellt": "2023-10-01",
+    "themen": ["ÖPNV & Bahn", "Radverkehr"],
+    "quelle_url": "https://www.green-office.fau.de/mobilitaetskonzept/",
+    "dateien": []
+  },
+  {
+    "id": "rahmenplan-innenstadt",
+    "title": "Rahmenplan Innenstadt (Erlanger Neustadt)",
+    "beschreibung": "Städtebaulicher Rahmenplan für die Erlanger Innenstadt/Neustadt im Rahmen der Stadterneuerung.",
+    "erstellt": "2022-05-22",
+    "themen": ["Innenstadt & Einzelhandel", "Bauleitplanung", "Wohnen & Quartiere"],
+    "quelle_url": "https://erlangen.de/aktuelles/rahmenplan_innenstadt",
+    "dateien": [
+      { "titel": "Rahmenplan Erlanger Neustadt", "pfad": "plaene/rahmenplan_erlanger_neustadt.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Bauen%20&%20Planen/Stadterneuerung/SG%20Innenstadt/Rahmenplan_Erlanger-Neustadt.pdf" }
+    ]
+  }
+]

@@ -13,6 +13,7 @@
   --c-ort: #e87ba4;      /* Slot 3 magenta */
   --c-vorlage: #eda100;  /* Slot 4 gelb    */
   --c-bplan: #1baf7a;    /* Slot 5 aqua    */
+  --c-plan: #4a3aa7;     /* Slot 7 violett */
   --c-thread: #eb6834;   /* Akzent Kante "roter Faden" */
 }
 
@@ -116,6 +117,7 @@ main { flex: 1; display: flex; min-height: 0; }
   background: var(--page); border: 1px solid var(--hairline); border-radius: 4px;
   margin-right: .35rem; padding: 0 .25rem; vertical-align: text-bottom;
 }
+.badge-plan { background: var(--c-plan); border-color: var(--c-plan); color: #fff; }
 
 /* ── Viewer (Tabs: Dokument | Netzwerk) ──────────────────────────── */
 #viewer { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
@@ -171,6 +173,11 @@ main { flex: 1; display: flex; min-height: 0; }
   padding: 1rem 1.2rem; margin-bottom: .8rem;
   font-size: .86rem; line-height: 1.55; white-space: pre-wrap; word-break: break-word;
 }
+ul.plan-files { list-style: none; margin: 0; padding: 0; white-space: normal; }
+ul.plan-files li { padding: .3rem 0; border-bottom: 1px solid var(--hairline); font-size: .85rem; }
+ul.plan-files li:last-child { border-bottom: none; }
+ul.plan-files a { color: var(--c-top); text-decoration: none; }
+ul.plan-files a:hover { text-decoration: underline; }
 .doc-page-nr {
   font-size: .7rem; color: var(--muted); text-transform: uppercase;
   letter-spacing: .05em; margin: 0 0 .5rem;
@@ -192,6 +199,7 @@ main { flex: 1; display: flex; min-height: 0; }
 .chip-vorlage { background: var(--c-vorlage); transform: rotate(45deg) scale(.82); }
 .chip-ort     { background: var(--c-ort); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
 .chip-bplan   { background: var(--c-bplan); clip-path: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0 50%); }
+.chip-plan    { background: var(--c-plan); clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
 .chip-thread  { background: var(--c-thread); height: 3px; border-radius: 2px; }
 
 footer {

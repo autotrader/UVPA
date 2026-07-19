@@ -14,6 +14,11 @@ public sealed record NodeRow(
 
 public sealed record EdgeRow(string Source, string Target, string Type, int Weight);
 
+public sealed record PlanRow(string Id, string Title, string Beschreibung, string? QuelleUrl, string Themen);
+
+public sealed record PlanFileRow(
+    string PlanId, string Titel, string? Path, string? QuelleUrl, int Pages, string? Text);
+
 /// <summary>Kapselt Schema, Bulk-Inserts (Appender) und FTS-Aufbau der graph.db.</summary>
 public sealed class GraphDb : IDisposable
 {
@@ -30,10 +35,10 @@ public sealed class GraphDb : IDisposable
     public void CreateSchema() => Execute(
         """
         CREATE TABLE nodes (
-            id         VARCHAR PRIMARY KEY,  -- 's:2020-05-19', 't:5046107', 'v:611/327/2020', 'o:Büchenbach', 'b:472'
-            type       VARCHAR NOT NULL,     -- session | top | vorlage | ort | bplan
+            id         VARCHAR PRIMARY KEY,  -- 's:2020-05-19', 't:5046107', 'v:611/327/2020', 'o:Büchenbach', 'b:472', 'p:vep'
+            type       VARCHAR NOT NULL,     -- session | top | vorlage | ort | bplan | plan
             label      VARCHAR NOT NULL,
-            date       DATE,                 -- Sitzungsdatum (nur session/top)
+            date       DATE,                 -- Sitzungsdatum (nur session/top) bzw. Erstelldatum (plan)
             top_nr     VARCHAR,
             vorlage_nr VARCHAR,
             folder     VARCHAR               -- Repo-Pfad für Deep-Links ins Frontend
@@ -42,7 +47,7 @@ public sealed class GraphDb : IDisposable
         CREATE TABLE edges (
             source VARCHAR NOT NULL,
             target VARCHAR NOT NULL,
-            type   VARCHAR NOT NULL,          -- in_session | has_vorlage | references_vorlage | mentions_ort | mentions_bplan | thread
+            type   VARCHAR NOT NULL,          -- in_session | has_vorlage | references_vorlage | mentions_ort | mentions_bplan | thread | relates_to_plan
             weight INTEGER NOT NULL DEFAULT 1
         );
 
@@ -56,6 +61,23 @@ public sealed class GraphDb : IDisposable
             url       VARCHAR,                -- Original-URL im Ratsinformationssystem
             pages     INTEGER,
             text      VARCHAR                 -- extrahierter Volltext (NULL = Datei fehlt/Scan)
+        );
+
+        CREATE TABLE plans (
+            id           VARCHAR PRIMARY KEY, -- registry.json "id", ohne 'p:'-Präfix
+            title        VARCHAR NOT NULL,
+            beschreibung VARCHAR,
+            quelle_url   VARCHAR,
+            themen       VARCHAR               -- kommagetrennt, aus registry.json "themen"
+        );
+
+        CREATE TABLE plan_files (
+            plan_id    VARCHAR NOT NULL,
+            titel      VARCHAR,
+            path       VARCHAR,                -- Repo-Pfad (plaene/<datei>.pdf), NULL wenn nur externe Quelle
+            quelle_url VARCHAR,
+            pages      INTEGER,
+            text       VARCHAR                 -- extrahierter Volltext, für FTS mitindiziert
         );
         """);
 
@@ -94,6 +116,28 @@ public sealed class GraphDb : IDisposable
         }
     }
 
+    public void InsertPlans(IEnumerable<PlanRow> plans)
+    {
+        using var appender = _conn.CreateAppender("plans");
+        foreach (var p in plans)
+        {
+            var row = appender.CreateRow();
+            row.AppendValue(p.Id).AppendValue(p.Title).AppendValue(p.Beschreibung)
+               .AppendValue(p.QuelleUrl).AppendValue(p.Themen).EndRow();
+        }
+    }
+
+    public void InsertPlanFiles(IEnumerable<PlanFileRow> files)
+    {
+        using var appender = _conn.CreateAppender("plan_files");
+        foreach (var f in files)
+        {
+            var row = appender.CreateRow();
+            row.AppendValue(f.PlanId).AppendValue(f.Titel).AppendValue(f.Path)
+               .AppendValue(f.QuelleUrl).AppendValue(f.Pages).AppendValue(f.Text).EndRow();
+        }
+    }
+
     /// <summary>
     /// Verdichtet den "roten Faden": direkte Kante zwischen zwei TOPs, die dieselbe
     /// Vorlage behandeln (typisch: dieselbe Vorlage über mehrere Sitzungstermine).
@@ -114,6 +158,7 @@ public sealed class GraphDb : IDisposable
         INSTALL fts;
         LOAD fts;
         PRAGMA create_fts_index('documents', 'id', 'title', 'text', stemmer='german', stopwords='none');
+        PRAGMA create_fts_index('plan_files', 'rowid', 'titel', 'text', stemmer='german', stopwords='none');
         """);
 
     public long Count(string table)

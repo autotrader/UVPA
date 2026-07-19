@@ -34,3 +34,23 @@ public sealed class DocRecord
     [JsonPropertyName("filename")] public string Filename { get; set; } = "";
     [JsonPropertyName("href")] public string Href { get; set; } = "";
 }
+
+/// <summary>Ein kuratierter externer Plan/Konzept aus plaene/registry.json.</summary>
+public sealed class PlanRecord
+{
+    [JsonPropertyName("id")] public string Id { get; set; } = "";
+    [JsonPropertyName("title")] public string Title { get; set; } = "";
+    [JsonPropertyName("beschreibung")] public string Beschreibung { get; set; } = "";
+    [JsonPropertyName("erstellt")] public string? Erstellt { get; set; }
+    [JsonPropertyName("themen")] public List<string> Themen { get; set; } = [];
+    [JsonPropertyName("quelle_url")] public string? QuelleUrl { get; set; }
+    [JsonPropertyName("dateien")] public List<PlanFile> Dateien { get; set; } = [];
+    [JsonPropertyName("ris_vorlage_nr")] public string? RisVorlageNr { get; set; }
+}
+
+public sealed class PlanFile
+{
+    [JsonPropertyName("titel")] public string Titel { get; set; } = "";
+    [JsonPropertyName("pfad")] public string Pfad { get; set; } = "";
+    [JsonPropertyName("quelle_url")] public string? QuelleUrl { get; set; }
+}
