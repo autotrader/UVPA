@@ -14,12 +14,16 @@ Documents are indexed per session and per Tagesordnungspunkt (TOP), then stored 
 
 Usage:
     python uvp_agent.py [--refresh]
+    python uvp_agent.py --compress   # shrink already-downloaded PDFs >=10MB in place
 
 Environment:
     ANTHROPIC_API_KEY  required
 
 Optional:
-    pip install pypdf   enables PDF text extraction
+    pip install pypdf     enables PDF text extraction
+    pip install pymupdf   enables automatic compression of PDFs >=10MB (see COMPRESS_MAX_BYTES);
+                           newly downloaded oversized files are compressed automatically, since
+                           the pre-commit hook (.githooks/pre-commit) rejects anything >=10MB
 """
 
 import argparse
@@ -31,7 +35,6 @@ import sys
 from html.parser import HTMLParser
 from pathlib import Path
 
-import anthropic
 import requests
 
 # ── Configuration ─────────────────────────────────────────────────────────────
@@ -44,6 +47,15 @@ INDEX_FILE = DOWNLOAD_DIR / "index.json"
 SCRAPE_YEARS = range(2020, 2027)
 MODEL = "claude-opus-4-8"
 MAX_TOKENS = 4096
+
+# Kept under the pre-commit hook's 10 MiB cutoff (.githooks/pre-commit) with headroom.
+COMPRESS_MAX_BYTES = 9 * 1024 * 1024
+COMPRESS_ATTEMPTS = [  # (max image dimension px, JPEG quality) — escalating aggressiveness
+    (1600, 65),
+    (1200, 55),
+    (900, 40),
+    (700, 30),
+]
 
 HTTP_HEADERS = {
     "User-Agent": (
@@ -413,6 +425,71 @@ def load_index(http: requests.Session, force: bool = False) -> list[dict]:
 
 # ── Download Helpers ──────────────────────────────────────────────────────────
 
+def _compress_pdf(path: Path) -> bool:
+    """Recompress embedded raster images in place (downsample + re-encode as JPEG)
+    until the PDF is under COMPRESS_MAX_BYTES. Returns True only if that goal was
+    reached — the file is still rewritten in place to the smallest attempt found
+    even when every attempt falls short, so callers must re-check the file size
+    to detect a "shrank but still oversized" outcome.
+
+    Vector/text content is untouched; only oversized raster images (maps, scans) lose
+    resolution. No-op (returns False) if pymupdf isn't installed or nothing helps.
+    """
+    try:
+        import fitz
+    except ImportError:
+        return False
+
+    original_size = path.stat().st_size
+    if original_size < COMPRESS_MAX_BYTES:
+        return False
+
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    best_size = original_size
+    for max_dim, quality in COMPRESS_ATTEMPTS:
+        try:
+            doc = fitz.open(path)
+            seen: set = set()
+            for page in doc:
+                for img in page.get_images(full=True):
+                    xref = img[0]
+                    if xref in seen:
+                        continue
+                    seen.add(xref)
+                    try:
+                        pix = fitz.Pixmap(doc, xref)
+                        if pix.colorspace is None:
+                            continue  # stencil/mask, leave alone
+                        if pix.colorspace.n >= 4:
+                            pix = fitz.Pixmap(fitz.csRGB, pix)
+                        if pix.alpha:
+                            pix = fitz.Pixmap(pix, 0)
+                        w, h = pix.width, pix.height
+                        if max(w, h) > max_dim:
+                            scale = max_dim / max(w, h)
+                            pix = fitz.Pixmap(pix, int(w * scale), int(h * scale), None)
+                        jpg = pix.tobytes("jpeg", jpg_quality=quality)
+                        page.replace_image(xref, stream=jpg)
+                    except Exception:
+                        continue
+            doc.save(tmp, garbage=4, deflate=True, clean=True)
+            doc.close()
+        except Exception:
+            tmp.unlink(missing_ok=True)
+            return False
+
+        tmp_size = tmp.stat().st_size
+        if tmp_size < best_size:
+            tmp.replace(path)
+            best_size = tmp_size
+        else:
+            tmp.unlink(missing_ok=True)
+        if best_size < COMPRESS_MAX_BYTES:
+            return True
+
+    return False  # shrank (maybe) but never got under the cap even at the most aggressive setting
+
+
 def _download_one(doc: dict, target_dir: Path, http: requests.Session) -> str:
     path = target_dir / doc["filename"]
     if path.exists():
@@ -426,7 +503,13 @@ def _download_one(doc: dict, target_dir: Path, http: requests.Session) -> str:
                 for chunk in r.iter_content(8192):
                     f.write(chunk)
             doc["downloaded"] = True
-            return f"OK: {path.name} ({path.stat().st_size:,} B)"
+            note = ""
+            if path.suffix.lower() == ".pdf" and path.stat().st_size >= COMPRESS_MAX_BYTES:
+                if _compress_pdf(path):
+                    note = f", komprimiert -> {path.stat().st_size:,} B"
+                else:
+                    note = " [WARNUNG: weiterhin >=10MB, wird vom Pre-Commit-Hook geblockt]"
+            return f"OK: {path.name} ({path.stat().st_size:,} B{note})"
         return f"HTTP {r.status_code}: {path.name}"
     except Exception as exc:
         return f"Error: {exc}: {path.name}"
@@ -767,6 +850,8 @@ def _call_tool(
 # ── Agent Loop ────────────────────────────────────────────────────────────────
 
 def run(force_refresh: bool = False) -> None:
+    import anthropic
+
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         sys.exit("Error: ANTHROPIC_API_KEY environment variable is not set.")
@@ -848,6 +933,38 @@ def run(force_refresh: bool = False) -> None:
         print()
 
 
+def compress_existing() -> None:
+    """Scan DOWNLOAD_DIR for already-downloaded PDFs >=COMPRESS_MAX_BYTES and shrink them in place."""
+    try:
+        import fitz  # noqa: F401
+    except ImportError:
+        sys.exit("Error: pymupdf ist nicht installiert. 'pip install pymupdf' ausführen.")
+
+    candidates = sorted(
+        p for p in DOWNLOAD_DIR.rglob("*.pdf")
+        if p.stat().st_size >= COMPRESS_MAX_BYTES
+    )
+    if not candidates:
+        print("Keine Dateien >=10MB gefunden.")
+        return
+
+    print(f"{len(candidates)} Datei(en) >=10MB gefunden.\n")
+    n_ok, n_fail = 0, 0
+    for i, path in enumerate(candidates, 1):
+        before = path.stat().st_size
+        rel = path.relative_to(DOWNLOAD_DIR)
+        if _compress_pdf(path):
+            after = path.stat().st_size
+            print(f"[{i}/{len(candidates)}] OK  {rel}: {before:,} -> {after:,} B")
+            n_ok += 1
+        else:
+            after = path.stat().st_size
+            status = "unverändert" if after == before else f"{before:,} -> {after:,} B (weiterhin >=10MB)"
+            print(f"[{i}/{len(candidates)}] FAIL {rel}: {status}")
+            n_fail += 1
+    print(f"\nFertig: {n_ok} komprimiert, {n_fail} weiterhin >=10MB.")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=f"Claude AI agent for {COMMITTEE_NAME} document retrieval"
@@ -857,8 +974,17 @@ def main() -> None:
         action="store_true",
         help="Force re-scrape the document index from ratsinfo.erlangen.de",
     )
+    parser.add_argument(
+        "--compress",
+        action="store_true",
+        help="Shrink already-downloaded PDFs >=10MB in place, then exit (no chat session).",
+    )
     main.__doc__ = None
-    run(force_refresh=parser.parse_args().refresh)
+    args = parser.parse_args()
+    if args.compress:
+        compress_existing()
+        return
+    run(force_refresh=args.refresh)
 
 
 if __name__ == "__main__":
