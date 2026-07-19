@@ -1,4 +1,4 @@
-# Themen-Taxonomie (kuratiert, Stand 2. Runde)
+# Themen-Taxonomie (kuratiert, Stand 3. Runde — final für Phase 2)
 
 Grundlage für die Themen-Filter der Dokumentensuche (Phase 2). Die Zuordnung
 übernimmt später ein LLM beim Build — die Schlüsselwörter hier sind
@@ -49,10 +49,13 @@ Dabei getroffene Zuordnungen (bei Bedarf ändern):
 | Fraktionsanträge | „Antrag der … Fraktion" | 368 |
 | Beiräte & Bürgerschaft | Stadtteilbeirat, Ortsbeirat, Bürgerversammlung | 132 |
 
+## Entschieden
+
+- 5 (Verkehrssicherheit & Tempo) und 6 (Verkehrsführung & Straßenraum)
+  bleiben **getrennt** (Nutzer-Entscheidung 2026-07-19).
+
 ## Verbleibende offene Punkte
 
 - „Baustellen" findet über Titel nur 8 TOPs — Baustellen stecken meist im
   Volltext von Mitteilungen; die LLM-Zuordnung über den Volltext wird deutlich
   mehr finden. Beobachten, ob das Thema nach dem Backfill trägt.
-- Sollen 5 (Verkehrssicherheit & Tempo) und 6 (Verkehrsführung & Straßenraum)
-  zusammengelegt werden? (Bisher unbeantwortet.)
