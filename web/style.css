@@ -1,0 +1,200 @@
+/* UVPA Dokumentensuche — Farbrollen aus der validierten Referenz-Palette */
+:root {
+  color-scheme: light;
+  --surface-1: #fcfcfb;
+  --page: #f9f9f7;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --hairline: #e1e0d9;
+  --border: rgba(11, 11, 11, 0.10);
+  --c-top: #2a78d6;      /* Slot 1 blau    */
+  --c-session: #008300;  /* Slot 2 grün    */
+  --c-ort: #e87ba4;      /* Slot 3 magenta */
+  --c-vorlage: #eda100;  /* Slot 4 gelb    */
+  --c-bplan: #1baf7a;    /* Slot 5 aqua    */
+  --c-thread: #eb6834;   /* Akzent Kante "roter Faden" */
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--page);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Overlays (Boot + Passwort-Gate) ─────────────────────────────── */
+.overlay {
+  position: fixed; inset: 0; z-index: 50;
+  background: var(--page);
+  display: flex; align-items: center; justify-content: center;
+}
+.gate-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 2rem 2.5rem;
+  max-width: 24rem;
+  text-align: center;
+  box-shadow: 0 4px 24px rgba(11, 11, 11, 0.06);
+}
+.gate-card h1 { margin: 0 0 .5rem; font-size: 1.3rem; }
+.gate-card p { color: var(--ink-2); font-size: .9rem; line-height: 1.45; }
+.gate-card input {
+  width: 100%; padding: .55rem .7rem; margin: .8rem 0;
+  border: 1px solid var(--hairline); border-radius: 6px; font-size: 1rem;
+}
+.gate-card button {
+  width: 100%; padding: .55rem; border: 0; border-radius: 6px;
+  background: var(--c-top); color: #fff; font-size: 1rem; cursor: pointer;
+}
+.error { color: #d03b3b; font-weight: 600; }
+
+/* ── Kopfzeile + Filter ──────────────────────────────────────────── */
+header {
+  display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;
+  padding: .6rem 1rem;
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--hairline);
+}
+header h1 { margin: 0; font-size: 1.05rem; white-space: nowrap; }
+header .sub { font-weight: 400; font-size: .8rem; color: var(--muted); }
+#search-form { display: flex; gap: .4rem; flex: 1; min-width: 20rem; }
+#search-input {
+  flex: 1; padding: .45rem .7rem;
+  border: 1px solid var(--hairline); border-radius: 6px; font-size: .95rem;
+}
+#search-form button {
+  padding: .45rem 1.1rem; border: 1px solid var(--c-top); border-radius: 6px;
+  background: var(--c-top); color: #fff; cursor: pointer;
+}
+
+#filterbar {
+  display: flex; gap: 1.2rem; flex-wrap: wrap;
+  padding: .45rem 1rem;
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--hairline);
+  font-size: .8rem; color: var(--ink-2);
+}
+#filterbar label { display: flex; align-items: center; gap: .4rem; }
+#filterbar select {
+  padding: .2rem .35rem; border: 1px solid var(--hairline); border-radius: 5px;
+  background: var(--surface-1); color: var(--ink); font-size: .8rem;
+}
+
+/* ── Hauptbereich ────────────────────────────────────────────────── */
+main { flex: 1; display: flex; min-height: 0; }
+
+#results {
+  width: 27rem; min-width: 20rem; overflow-y: auto;
+  background: var(--surface-1);
+  border-right: 1px solid var(--hairline);
+  padding: .8rem 1rem;
+}
+#results h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: .2rem 0 .6rem; }
+#results-list { list-style: none; margin: 0; padding: 0; }
+#results-list li {
+  padding: .5rem .6rem; margin-bottom: .4rem;
+  border: 1px solid var(--hairline); border-radius: 6px;
+  cursor: pointer; font-size: .82rem; line-height: 1.4;
+}
+#results-list li:hover { border-color: var(--c-top); }
+#results-list li.active { border-color: var(--c-top); box-shadow: 0 0 0 1px var(--c-top) inset; }
+.r-title { font-weight: 600; }
+.r-meta { color: var(--muted); font-size: .74rem; margin-top: .1rem; }
+.r-snippet { color: var(--ink-2); font-size: .76rem; margin-top: .25rem; }
+.r-snippet mark, #doc-view mark { background: #ffe9a8; padding: 0 .1em; border-radius: 2px; }
+
+.badge {
+  display: inline-block; min-width: 1.9rem; text-align: center;
+  font-size: .68rem; font-weight: 700; color: var(--ink-2);
+  background: var(--page); border: 1px solid var(--hairline); border-radius: 4px;
+  margin-right: .35rem; padding: 0 .25rem; vertical-align: text-bottom;
+}
+
+/* ── Viewer (Tabs: Dokument | Netzwerk) ──────────────────────────── */
+#viewer { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
+#tabs {
+  display: flex; gap: .25rem; padding: .4rem .8rem 0;
+  background: var(--surface-1); border-bottom: 1px solid var(--hairline);
+}
+#tabs button {
+  padding: .4rem 1.1rem; font-size: .85rem; cursor: pointer;
+  border: 1px solid var(--hairline); border-bottom: none;
+  border-radius: 6px 6px 0 0; background: var(--page); color: var(--ink-2);
+}
+#tabs button.active {
+  background: var(--surface-1); color: var(--ink); font-weight: 600;
+  position: relative; top: 1px;
+}
+.panel { flex: 1; min-height: 0; position: relative; }
+#panel-doc { overflow-y: auto; }
+
+/* Dokument-Leseansicht */
+#doc-view { max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 3rem; }
+#doc-view .hint { font-size: .85rem; color: var(--ink-2); line-height: 1.5; }
+.doc-head {
+  background: var(--surface-1); border: 1px solid var(--hairline); border-radius: 8px;
+  padding: .8rem 1rem; margin-bottom: 1rem;
+}
+.doc-head h3 { margin: 0 0 .3rem; font-size: 1.05rem; }
+.doc-head .meta { color: var(--ink-2); font-size: .8rem; margin: .1rem 0; }
+.doc-actions { margin-top: .6rem; display: flex; gap: .5rem; flex-wrap: wrap; }
+.doc-actions a, .doc-actions button {
+  font-size: .8rem; padding: .35rem .7rem; cursor: pointer;
+  border: 1px solid var(--hairline); border-radius: 6px;
+  background: var(--surface-1); color: var(--ink); text-decoration: none;
+}
+.doc-actions a:hover, .doc-actions button:hover { border-color: var(--c-top); color: var(--c-top); }
+.doc-actions button.active { background: var(--c-top); border-color: var(--c-top); color: #fff; }
+.doc-actions button:disabled { opacity: .45; cursor: not-allowed; }
+
+.notice {
+  background: #fff7e0; border: 1px solid #eda100; border-radius: 8px;
+  padding: .6rem .9rem; margin-bottom: .8rem;
+  font-size: .82rem; color: var(--ink-2);
+}
+
+.pdf-frame {
+  width: 100%; height: 78vh;
+  border: 1px solid var(--hairline); border-radius: 8px;
+  background: var(--surface-1);
+}
+
+.doc-page {
+  background: var(--surface-1); border: 1px solid var(--hairline); border-radius: 8px;
+  padding: 1rem 1.2rem; margin-bottom: .8rem;
+  font-size: .86rem; line-height: 1.55; white-space: pre-wrap; word-break: break-word;
+}
+.doc-page-nr {
+  font-size: .7rem; color: var(--muted); text-transform: uppercase;
+  letter-spacing: .05em; margin: 0 0 .5rem;
+}
+
+/* Netzwerk-Tab */
+#cy { position: absolute; inset: 0; background: var(--surface-1); }
+#legend {
+  position: absolute; top: .6rem; right: .6rem; z-index: 10;
+  display: flex; flex-direction: column; gap: .25rem;
+  background: color-mix(in srgb, var(--surface-1) 92%, transparent);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: .5rem .7rem; font-size: .74rem; color: var(--ink-2);
+}
+#legend span { display: flex; align-items: center; gap: .45rem; }
+.chip { width: 12px; height: 12px; display: inline-block; flex: none; }
+.chip-top     { background: var(--c-top); border-radius: 50%; }
+.chip-session { background: var(--c-session); border-radius: 3px; }
+.chip-vorlage { background: var(--c-vorlage); transform: rotate(45deg) scale(.82); }
+.chip-ort     { background: var(--c-ort); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.chip-bplan   { background: var(--c-bplan); clip-path: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0 50%); }
+.chip-thread  { background: var(--c-thread); height: 3px; border-radius: 2px; }
+
+footer {
+  padding: .35rem 1rem; font-size: .75rem; color: var(--muted);
+  background: var(--surface-1); border-top: 1px solid var(--hairline);
+}

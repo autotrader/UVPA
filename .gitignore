@@ -1,6 +1,21 @@
 __pycache__/
 *.pyc
 
+# .NET build output (GraphBuilder)
+bin/
+obj/
+
+# Build-Artefakt der Pipeline — wird in GitHub Actions erzeugt und nach
+# GitHub Pages deployt, nicht ins Repo committet (>10MB Pre-Commit-Limit).
+graph.db
+graph.db.wal
+graph.db.enc
+
+# Lokale Build-/Testartefakte des Frontends
+web/docs/
+_site/
+node_modules/
+
 # .gitignore kann keine Dateigroesse pruefen (nur Pfade/Namen).
 # Die eigentliche 10MB-Grenze wird per Pre-Commit-Hook durchgesetzt:
 #   git config core.hooksPath .githooks

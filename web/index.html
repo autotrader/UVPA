@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>UVPA Erlangen — Dokumentensuche</title>
+  <link rel="stylesheet" href="style.css?v=4">
+  <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.34.0/dist/cytoscape.min.js"></script>
+</head>
+<body>
+
+  <!-- Passwort-Gate (nur sichtbar, wenn graph.db.enc geladen wird) -->
+  <div id="gate" class="overlay" hidden>
+    <form id="gate-form" class="gate-card">
+      <h1>UVPA Erlangen</h1>
+      <p>Dokumentensuche über die Ausschussarbeit 2020–2026.<br>
+         Zugang nur mit Passwort.</p>
+      <input id="gate-pw" type="password" autocomplete="current-password"
+             placeholder="Passwort" autofocus required>
+      <button type="submit">Entsperren</button>
+      <p id="gate-error" class="error" hidden>Falsches Passwort — Entschlüsselung fehlgeschlagen.</p>
+    </form>
+  </div>
+
+  <!-- Lade-Status -->
+  <div id="boot" class="overlay">
+    <div class="gate-card"><p id="boot-msg">Lade Datenbank …</p></div>
+  </div>
+
+  <header>
+    <h1>UVPA Erlangen <span class="sub">Dokumentensuche · Umwelt-, Verkehrs- und Planungsausschuss</span></h1>
+    <form id="search-form">
+      <input id="search-input" type="search"
+             placeholder="Volltextsuche, z. B. Radweg Büchenbach, VO/2024, Bebauungsplan 472 …">
+      <button type="submit">Suchen</button>
+    </form>
+  </header>
+
+  <div id="filterbar">
+    <label>Jahr <select id="f-year"><option value="">alle</option></select></label>
+    <label>Typ
+      <select id="f-type">
+        <option value="">alle</option>
+        <option value="VO">VO — Beschlussvorlage</option>
+        <option value="BL">BL — Beschluss</option>
+        <option value="AN">Anlage</option>
+        <option value="EI">EI — Einladung</option>
+        <option value="NI">NI — Niederschrift</option>
+        <option value="SU">SU — Sitzungsunterlagen</option>
+      </select>
+    </label>
+    <label>Stadtteil <select id="f-ort"><option value="">alle</option></select></label>
+    <label>Sortierung
+      <select id="f-sort">
+        <option value="score">Relevanz</option>
+        <option value="date">Datum (neueste zuerst)</option>
+      </select>
+    </label>
+  </div>
+
+  <main>
+    <aside id="results">
+      <h2 id="results-title">Dokumente</h2>
+      <ol id="results-list"></ol>
+    </aside>
+
+    <section id="viewer">
+      <nav id="tabs">
+        <button id="tab-doc" class="active" type="button">Dokument</button>
+        <button id="tab-net" type="button">Netzwerk</button>
+      </nav>
+
+      <div id="panel-doc" class="panel">
+        <div id="doc-view">
+          <p class="hint">Links ein Dokument auswählen — der extrahierte Volltext wird sofort
+          hier angezeigt, Suchbegriffe werden markiert.</p>
+          <p class="hint">Das Original-PDF lässt sich jeweils aus dem Ratsinformationssystem
+          herunterladen. Der Tab <strong>Netzwerk</strong> zeigt die Beziehungen des Dokuments
+          (gleiche Vorlage, Stadtteile, rote Fäden über Sitzungen hinweg).</p>
+        </div>
+      </div>
+
+      <div id="panel-net" class="panel" hidden>
+        <div id="cy"></div>
+        <div id="legend">
+          <span><i class="chip chip-top"></i>TOP</span>
+          <span><i class="chip chip-session"></i>Sitzung</span>
+          <span><i class="chip chip-vorlage"></i>Vorlage</span>
+          <span><i class="chip chip-ort"></i>Stadtteil</span>
+          <span><i class="chip chip-bplan"></i>B-Plan</span>
+          <span><i class="chip chip-thread"></i>Roter Faden</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="statusbar">Lade …</footer>
+
+  <script type="module" src="app.js?v=4"></script>
+</body>
+</html>

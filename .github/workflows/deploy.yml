@@ -1,0 +1,58 @@
+# Baut graph.db aus den im Repo liegenden Dokumenten (GraphBuilder, C#/.NET),
+# verschlüsselt sie mit AES-256 (Secret SITE_PASSWORD) und deployt das
+# statische Frontend nach GitHub Pages.
+name: Build & Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build graph.db
+        run: dotnet run --project GraphBuilder -c Release -- "$GITHUB_WORKSPACE" --db graph.db
+
+      - name: Assemble site (encrypt DB + core PDFs, AES-256-GCM)
+        env:
+          SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
+        run: |
+          if [ -z "$SITE_PASSWORD" ]; then
+            echo "::error::Secret SITE_PASSWORD ist nicht gesetzt."
+            exit 1
+          fi
+          mkdir -p _site
+          cp web/index.html web/style.css web/app.js _site/
+          node tools/encrypt.mjs graph.db _site/graph.db.enc
+          node tools/encrypt-docs.mjs "$GITHUB_WORKSPACE" _site/docs
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

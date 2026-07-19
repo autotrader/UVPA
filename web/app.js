@@ -1,0 +1,501 @@
+// UVPA Dokumentensuche — Frontend
+// Kernaufgabe: Dokumente schnell finden (FTS/BM25 + Metadaten-Filter) und den
+// extrahierten Volltext sofort im Browser anzeigen. Das Beziehungsnetzwerk
+// (Cytoscape) ist die Kontext-Ansicht dazu. Bewusst ohne KI — nur SQL.
+//
+// Datenquelle: graph.db (dev, unverschlüsselt) oder graph.db.enc
+// (prod, AES-256-GCM — Gegenstück zu tools/encrypt.mjs).
+
+import * as duckdb from "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.33.1-dev57.0/+esm";
+
+const $ = (id) => document.getElementById(id);
+const status = (msg) => { $("statusbar").textContent = msg; };
+const bootMsg = (msg) => { $("boot-msg").textContent = msg; };
+const esc = (s) => String(s).replace(/'/g, "''");
+const escHtml = (s) => String(s).replace(/[&<>"]/g,
+  (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const TYPE_NAMES = { EI: "Einladung", NI: "Niederschrift", SU: "Sitzungsunterlagen",
+                     BL: "Beschluss", VO: "Beschlussvorlage", AN: "Anlage" };
+
+// ── Entschlüsselung (Format: [16 B Salt][12 B IV][AES-256-GCM-Ciphertext]) ──
+// DB und gehostete PDFs nutzen dasselbe Format; die PDFs teilen sich einen
+// Salt pro Deployment, daher lohnt ein Cache für den abgeleiteten Schlüssel.
+
+const keyCache = new Map();
+
+async function deriveKey(password, salt) {
+  const cacheId = password.length + ":" +
+    [...salt].map((b) => b.toString(16).padStart(2, "0")).join("");
+  if (keyCache.has(cacheId)) return keyCache.get(cacheId);
+  const material = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt, iterations: 310_000, hash: "SHA-256" },
+    material, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+  keyCache.set(cacheId, key);
+  return key;
+}
+
+async function decryptBytes(encBytes, password) {
+  const key = await deriveKey(password, encBytes.slice(0, 16));
+  const plain = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: encBytes.slice(16, 28) }, key, encBytes.slice(28));
+  return new Uint8Array(plain);
+}
+
+const decryptDb = decryptBytes;
+
+/**
+ * Passwort-Gate anzeigen; `validator(pw)` muss bei falschem Passwort werfen.
+ * Bei Erfolg wird das Passwort für die Session gemerkt (auch der PDF-Viewer
+ * nutzt es dann). Wird sowohl beim DB-Laden als auch on demand für
+ * verschlüsselte PDFs verwendet.
+ */
+function promptPassword(validator) {
+  $("boot").hidden = true;
+  $("gate").hidden = false;
+  $("gate-pw").focus();
+  return new Promise((resolve) => {
+    const form = $("gate-form");
+    const handler = async (ev) => {
+      ev.preventDefault();
+      try {
+        const result = await validator($("gate-pw").value);
+        sessionStorage.setItem("uvpa_pw", $("gate-pw").value);
+        form.removeEventListener("submit", handler);
+        $("gate").hidden = true;
+        $("gate-error").hidden = true;
+        resolve(result);
+      } catch {
+        $("gate-error").hidden = false;
+        $("gate-pw").select();
+      }
+    };
+    form.addEventListener("submit", handler);
+  });
+}
+
+async function askPassword(encBytes) {
+  const cached = sessionStorage.getItem("uvpa_pw");
+  if (cached !== null) {
+    try { return await decryptDb(encBytes, cached); }
+    catch { sessionStorage.removeItem("uvpa_pw"); }
+  }
+  const bytes = await promptPassword((pw) => decryptDb(encBytes, pw));
+  $("boot").hidden = false;
+  return bytes;
+}
+
+async function loadDbBytes() {
+  let r = await fetch("graph.db");            // Dev-Modus: unverschlüsselt
+  if (r.ok) return new Uint8Array(await r.arrayBuffer());
+  bootMsg("Lade verschlüsselte Datenbank …");
+  r = await fetch("graph.db.enc");
+  if (!r.ok) throw new Error("Weder graph.db noch graph.db.enc gefunden.");
+  const enc = new Uint8Array(await r.arrayBuffer());
+  return askPassword(enc);
+}
+
+// ── DuckDB-Wasm ──────────────────────────────────────────────────────────────
+
+let conn;
+
+async function initDb(bytes) {
+  bootMsg("Starte DuckDB-Wasm …");
+  const bundle = await duckdb.selectBundle(duckdb.getJsDelivrBundles());
+  const workerUrl = URL.createObjectURL(new Blob(
+    [`importScripts("${bundle.mainWorker}");`], { type: "text/javascript" }));
+  const db = new duckdb.AsyncDuckDB(
+    new duckdb.ConsoleLogger(duckdb.LogLevel.WARNING), new Worker(workerUrl));
+  await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+  URL.revokeObjectURL(workerUrl);
+  await db.registerFileBuffer("graph.db", bytes);
+  await db.open({ path: "graph.db", query: { castBigIntToDouble: true } });
+  conn = await db.connect();
+  bootMsg("Lade Volltext-Index (FTS) …");
+  await conn.query("LOAD fts");
+}
+
+async function q(sql) {
+  const t = await conn.query(sql);
+  return t.toArray().map((r) => r.toJSON());
+}
+
+// ── Suche + Ergebnisliste ────────────────────────────────────────────────────
+
+let lastTerms = [];
+
+function currentFilters() {
+  return { year: $("f-year").value, type: $("f-type").value,
+           ort: $("f-ort").value, sort: $("f-sort").value };
+}
+
+function filterConds(f) {
+  const conds = [];
+  if (f.year) conds.push(`year(n.date) = ${Number(f.year)}`);
+  if (f.type === "AN") conds.push(`d.type_code = ''`);
+  else if (f.type) conds.push(`d.type_code = '${esc(f.type)}'`);
+  if (f.ort) conds.push(
+    `EXISTS (SELECT 1 FROM edges e WHERE e.source = d.node_id AND e.target = 'o:${esc(f.ort)}')`);
+  return conds;
+}
+
+async function runSearch() {
+  const query = $("search-input").value.trim();
+  const f = currentFilters();
+  const conds = filterConds(f);
+  lastTerms = query.split(/\s+/).map((w) => w.replace(/[^\p{L}\p{N}\/.\-]/gu, ""))
+                   .filter((w) => w.length >= 3).slice(0, 8);
+
+  let rows;
+  if (query) {
+    status(`Suche „${query}“ …`);
+    conds.unshift("s.score IS NOT NULL");
+    const order = f.sort === "date" ? "n.date DESC, s.score DESC" : "s.score DESC";
+    rows = await q(
+      `SELECT d.id, d.title, d.type_code, d.node_id, d.pages,
+              n.label AS top_label, n.date::VARCHAR AS date, n.vorlage_nr, s.score
+       FROM (SELECT id, fts_main_documents.match_bm25(id, '${esc(query)}') AS score
+             FROM documents) s
+       JOIN documents d ON d.id = s.id
+       JOIN nodes n ON n.id = d.node_id
+       WHERE ${conds.join(" AND ")}
+       ORDER BY ${order} LIMIT 50`);
+
+    // Snippets nur für die Trefferliste berechnen (nicht über alle 5000 Texte)
+    if (rows.length && lastTerms.length) {
+      const ids = rows.map((r) => `'${esc(r.id)}'`).join(",");
+      const w = esc(lastTerms[0].toLowerCase());
+      const snips = await q(
+        `SELECT id, substr(text, greatest(position('${w}' IN lower(text)) - 90, 1), 240) AS snip
+         FROM documents WHERE id IN (${ids}) AND text IS NOT NULL`);
+      const byId = Object.fromEntries(snips.map((s) => [s.id, s.snip]));
+      for (const r of rows) r.snippet = byId[r.id];
+    }
+    renderResults(rows, `${rows.length} Treffer`);
+    status(`${rows.length} Treffer für „${query}“.`);
+  } else {
+    const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
+    rows = await q(
+      `SELECT d.id, d.title, d.type_code, d.node_id, d.pages,
+              n.label AS top_label, n.date::VARCHAR AS date, n.vorlage_nr
+       FROM documents d JOIN nodes n ON n.id = d.node_id
+       ${where} ORDER BY n.date DESC, d.title LIMIT 50`);
+    renderResults(rows, conds.length ? `${rows.length} Dokumente (gefiltert)` : "Neueste Dokumente");
+    status(`${rows.length} Dokumente angezeigt.`);
+  }
+}
+
+function renderResults(rows, title) {
+  $("results-title").textContent = title;
+  $("results-list").innerHTML = rows.map((r) => `
+    <li data-doc="${escHtml(r.id)}">
+      <div class="r-title"><span class="badge">${escHtml(r.type_code || "AN")}</span>${escHtml(r.title)}</div>
+      <div class="r-meta">${r.date ?? ""}${r.vorlage_nr ? " · " + escHtml(r.vorlage_nr) : ""}
+        · ${escHtml(shortLabel(r.top_label ?? "", 55))}${r.score != null ? ` · Score ${r.score.toFixed(2)}` : ""}</div>
+      ${r.snippet ? `<div class="r-snippet">… ${highlight(escHtml(r.snippet))} …</div>` : ""}
+    </li>`).join("");
+  for (const li of $("results-list").querySelectorAll("li"))
+    li.addEventListener("click", () => {
+      $("results-list").querySelector("li.active")?.classList.remove("active");
+      li.classList.add("active");
+      openDoc(li.dataset.doc);
+    });
+}
+
+function shortLabel(s, max = 70) {
+  return s.length > max ? s.slice(0, max - 1).trimEnd() + "…" : s;
+}
+
+function highlight(escapedHtml) {
+  if (!lastTerms.length) return escapedHtml;
+  const re = new RegExp(`(${lastTerms.map(escRe).join("|")})`, "giu");
+  return escapedHtml.replace(re, "<mark>$1</mark>");
+}
+
+// ── Dokument-Leseansicht ─────────────────────────────────────────────────────
+
+// Diese Typen werden (verschlüsselt) mit auf Pages deployt und können inline
+// angezeigt werden; Anlagen (2,4 GB) sprengen das Pages-Limit und bleiben
+// Text-Reader + RIS-Download.
+const HOSTED_TYPES = new Set(["VO", "BL", "EI", "NI"]);
+let pdfBlobUrl = null;
+
+function notice(msg) {
+  const el = $("doc-notice");
+  el.textContent = msg;
+  el.hidden = !msg;
+}
+
+/**
+ * Gehostetes PDF laden: erst unverschlüsselt (Dev), dann .enc mit dem
+ * Session-Passwort. Fehlt das Passwort (Dev-Modus ohne Gate) oder stimmt es
+ * nicht mehr, erscheint das Passwort-Gate on demand.
+ * null = Datei ist wirklich nicht deployt.
+ */
+async function fetchDocPdf(path) {
+  const rel = "docs/" + encodeURI(path);
+  let r = await fetch(rel);
+  if (r.ok) return new Uint8Array(await r.arrayBuffer());
+  r = await fetch(rel + ".enc");
+  if (!r.ok) return null;
+  const enc = new Uint8Array(await r.arrayBuffer());
+  const pw = sessionStorage.getItem("uvpa_pw");
+  if (pw !== null) {
+    try { return await decryptBytes(enc, pw); }
+    catch { sessionStorage.removeItem("uvpa_pw"); }
+  }
+  return promptPassword((p) => decryptBytes(enc, p));
+}
+
+async function showDocPdf(d) {
+  notice("");
+  status("Lade PDF …");
+  const bytes = await fetchDocPdf(d.path);
+  if (!bytes) {
+    notice("Dieses PDF ist nicht im Deployment enthalten (Datei fehlt im Repository) — " +
+           "bitte das Original über den RIS-Link laden.");
+    status("PDF nicht verfügbar.");
+    return;
+  }
+  if (pdfBlobUrl) URL.revokeObjectURL(pdfBlobUrl);
+  pdfBlobUrl = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+  $("doc-body").innerHTML =
+    `<iframe class="pdf-frame" src="${pdfBlobUrl}" title="PDF-Ansicht"></iframe>`;
+  $("btn-pdf").classList.add("active");
+  $("btn-text")?.classList.remove("active");
+  status(`PDF angezeigt (${(bytes.length / 1048576).toFixed(1)} MB, im Browser entschlüsselt).`);
+}
+
+async function openDoc(id) {
+  const [d] = await q(
+    `SELECT d.id, d.title, d.type_code, d.node_id, d.path, d.url, d.pages, d.text,
+            n.label AS top_label, n.date::VARCHAR AS date, n.vorlage_nr
+     FROM documents d JOIN nodes n ON n.id = d.node_id
+     WHERE d.id = '${esc(id)}'`);
+  if (!d) return;
+  activateTab("doc");
+
+  const tc = d.type_code || "AN";
+  const hosted = HOSTED_TYPES.has(tc);
+  const html = `<div class="doc-head">
+    <h3><span class="badge">${escHtml(tc)}</span>${escHtml(d.title)}</h3>
+    <p class="meta">${TYPE_NAMES[tc] ?? tc} · ${d.date ?? ""}${d.pages ? ` · ${d.pages} Seiten` : ""}</p>
+    <p class="meta">${escHtml(d.top_label)}${d.vorlage_nr ? " · Vorlage " + escHtml(d.vorlage_nr) : ""}</p>
+    <div class="doc-actions">
+      ${hosted ? `<button id="btn-text" class="active" type="button">Text</button>
+                  <button id="btn-pdf" type="button">PDF</button>`
+               : `<button type="button" disabled
+                    title="Anlagen sind nicht mit deployt (zu groß) — Original über den RIS-Link laden.">PDF</button>`}
+      <a href="${escHtml(d.url)}" target="_blank" rel="noopener"
+         title="${escHtml(d.path)}">⬇ Original-PDF (RIS)</a>
+      <button id="btn-context" type="button">⛬ Kontext im Netzwerk</button>
+    </div>
+  </div>
+  <div id="doc-notice" class="notice" hidden></div>
+  <div id="doc-body"></div>`;
+
+  $("doc-view").innerHTML = html;
+  renderDocText(d);
+  $("btn-context").addEventListener("click", () => focusNode(d.node_id));
+  if (hosted) {
+    $("btn-pdf").addEventListener("click", () => showDocPdf(d));
+    $("btn-text").addEventListener("click", () => {
+      renderDocText(d);
+      $("btn-text").classList.add("active");
+      $("btn-pdf").classList.remove("active");
+    });
+  }
+  $("panel-doc").scrollTop = 0;
+  document.querySelector("#doc-body .doc-page mark")
+    ?.scrollIntoView({ block: "center" });
+}
+
+function renderDocText(d) {
+  notice("");
+  if (d.text) {
+    const pages = d.text.split("\f");
+    $("doc-body").innerHTML = pages.map((p, i) => `
+      <div class="doc-page">
+        ${pages.length > 1 ? `<p class="doc-page-nr">Seite ${i + 1} / ${pages.length}</p>` : ""}${highlight(escHtml(p.trim()))}
+      </div>`).join("");
+  } else {
+    $("doc-body").innerHTML = `<p class="hint">Für dieses Dokument liegt kein
+      extrahierter Text vor (vermutlich gescannt oder Datei nicht im Repository).
+      ${HOSTED_TYPES.has(d.type_code || "AN")
+        ? "Über den PDF-Button lässt sich das Original direkt anzeigen."
+        : "Bitte das Original-PDF über den RIS-Link herunterladen."}</p>`;
+  }
+}
+
+// ── Netzwerk-Ansicht (Kontext) ───────────────────────────────────────────────
+
+const COLORS = { top: "#2a78d6", session: "#008300", ort: "#e87ba4", vorlage: "#eda100", bplan: "#1baf7a" };
+const SHAPES = { top: "ellipse", session: "round-rectangle", ort: "triangle", vorlage: "diamond", bplan: "hexagon" };
+
+let cy = null;
+
+function initCy() {
+  cy = cytoscape({
+    container: $("cy"),
+    wheelSensitivity: 0.25,
+    style: [
+      { selector: "node", style: {
+          label: "data(short)",
+          "font-size": 8, color: "#52514e",
+          "text-wrap": "wrap", "text-max-width": 110,
+          "text-valign": "bottom", "text-margin-y": 4,
+          width: 18, height: 18,
+          "background-color": (el) => COLORS[el.data("type")] ?? "#898781",
+          shape: (el) => SHAPES[el.data("type")] ?? "ellipse",
+          "border-width": 1, "border-color": "rgba(11,11,11,0.25)",
+      }},
+      { selector: 'node[type="session"]', style: { width: 26, height: 18 } },
+      { selector: 'node[type="top"]', style: { width: 22, height: 22 } },
+      { selector: "node:selected", style: { "border-width": 3, "border-color": "#0b0b0b" } },
+      { selector: "edge", style: {
+          "curve-style": "bezier", width: 1,
+          "line-color": "#c3c2b7", opacity: 0.8,
+      }},
+      { selector: 'edge[type="mentions_ort"], edge[type="mentions_bplan"]', style: {
+          "line-style": "dotted", opacity: 0.55 } },
+      { selector: 'edge[type="references_vorlage"]', style: { "line-style": "dashed" } },
+      { selector: 'edge[type="thread"]', style: {
+          "line-color": "#eb6834", width: 3, opacity: 0.95 } },
+    ],
+  });
+  // Klick im Graphen → Dokumente dieses Knotens in der Ergebnisliste
+  cy.on("tap", "node", async (ev) => {
+    const id = ev.target.id();
+    await expandNode(id);
+    const rows = await q(
+      `SELECT d.id, d.title, d.type_code, d.node_id, d.pages,
+              n.label AS top_label, n.date::VARCHAR AS date, n.vorlage_nr
+       FROM documents d JOIN nodes n ON n.id = d.node_id
+       WHERE d.node_id = '${esc(id)}' ORDER BY d.title`);
+    if (rows.length) {
+      renderResults(rows, `Dokumente: ${shortLabel(ev.target.data("label"), 40)}`);
+      status(`${rows.length} Dokument(e) zu „${shortLabel(ev.target.data("label"), 60)}“.`);
+    } else {
+      status(`„${shortLabel(ev.target.data("label"), 60)}“ — keine direkten Dokumente; Nachbarn geladen.`);
+    }
+  });
+}
+
+function addElements(nodeRows, edgeRows) {
+  const els = [];
+  for (const n of nodeRows) {
+    if (cy.getElementById(n.id).length) continue;
+    els.push({ group: "nodes", data: {
+      id: n.id, type: n.type, label: n.label, short: shortLabel(n.label),
+    }});
+  }
+  for (const e of edgeRows) {
+    const eid = `${e.source}->${e.target}:${e.type}`;
+    if (cy.getElementById(eid).length) continue;
+    els.push({ group: "edges", data: {
+      id: eid, source: e.source, target: e.target, type: e.type, weight: e.weight,
+    }});
+  }
+  if (els.length) cy.add(els);
+  cy.layout({ name: "cose", animate: false, padding: 30,
+              nodeRepulsion: 40_000, idealEdgeLength: 60 }).run();
+}
+
+async function fetchNodesByIds(ids) {
+  if (!ids.length) return [];
+  const list = ids.map((i) => `'${esc(i)}'`).join(",");
+  return q(`SELECT id, type, label FROM nodes WHERE id IN (${list})`);
+}
+
+/** Übersicht: alle roten Fäden (gleiche Vorlage über mehrere Sitzungen). */
+async function showOverview() {
+  const threads = await q("SELECT source, target, type, weight FROM edges WHERE type='thread'");
+  const topIds = [...new Set(threads.flatMap((e) => [e.source, e.target]))];
+  const sessEdges = topIds.length
+    ? await q(`SELECT source, target, type, weight FROM edges
+               WHERE type='in_session' AND source IN (${topIds.map((i) => `'${esc(i)}'`).join(",")})`)
+    : [];
+  const allIds = [...new Set([...topIds, ...sessEdges.map((e) => e.target)])];
+  addElements(await fetchNodesByIds(allIds), [...threads, ...sessEdges]);
+}
+
+/** 1-Hop-Nachbarschaft eines Knotens nachladen + Kantenschluss. */
+async function expandNode(id) {
+  const neighborEdges = await q(
+    `SELECT source, target, type, weight FROM edges
+     WHERE source = '${esc(id)}' OR target = '${esc(id)}'
+     ORDER BY weight DESC LIMIT 150`);
+  const ids = [...new Set([id, ...neighborEdges.flatMap((e) => [e.source, e.target])])];
+  addElements(await fetchNodesByIds(ids), neighborEdges);
+  const visible = cy.nodes().map((n) => n.id());
+  const list = visible.map((i) => `'${esc(i)}'`).join(",");
+  addElements([], await q(
+    `SELECT source, target, type, weight FROM edges
+     WHERE source IN (${list}) AND target IN (${list})`));
+}
+
+/** Vom Dokument in den Netzwerk-Tab springen und den Knoten fokussieren. */
+async function focusNode(nodeId) {
+  activateTab("net");
+  await expandNode(nodeId);
+  const node = cy.getElementById(nodeId);
+  cy.elements().unselect();
+  node.select();
+  cy.animate({ center: { eles: node }, zoom: 1.2, duration: 300 });
+}
+
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+
+function activateTab(which) {
+  const isDoc = which === "doc";
+  $("tab-doc").classList.toggle("active", isDoc);
+  $("tab-net").classList.toggle("active", !isDoc);
+  $("panel-doc").hidden = !isDoc;
+  $("panel-net").hidden = isDoc;
+  if (!isDoc) {
+    if (!cy) { initCy(); showOverview(); }
+    else cy.resize();
+  }
+}
+
+// ── Filter füllen ────────────────────────────────────────────────────────────
+
+async function populateFilters() {
+  const years = await q(
+    "SELECT DISTINCT year(date)::INT AS y FROM nodes WHERE type='session' ORDER BY y DESC");
+  $("f-year").insertAdjacentHTML("beforeend",
+    years.map((r) => `<option value="${r.y}">${r.y}</option>`).join(""));
+  const orte = await q("SELECT label FROM nodes WHERE type='ort' ORDER BY label");
+  $("f-ort").insertAdjacentHTML("beforeend",
+    orte.map((r) => `<option value="${escHtml(r.label)}">${escHtml(r.label)}</option>`).join(""));
+}
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
+
+try {
+  const bytes = await loadDbBytes();
+  await initDb(bytes);
+  await populateFilters();
+
+  $("search-form").addEventListener("submit", (ev) => { ev.preventDefault(); runSearch(); });
+  for (const id of ["f-year", "f-type", "f-ort", "f-sort"])
+    $(id).addEventListener("change", runSearch);
+  $("tab-doc").addEventListener("click", () => activateTab("doc"));
+  $("tab-net").addEventListener("click", () => activateTab("net"));
+
+  await runSearch();   // Startansicht: neueste Dokumente
+  $("boot").hidden = true;
+
+  const [meta] = await q(
+    `SELECT (SELECT count(*) FROM documents)::INT AS d,
+            (SELECT count(*) FROM documents WHERE text IS NOT NULL)::INT AS t,
+            (SELECT count(*) FROM nodes)::INT AS n`);
+  status(`Bereit — ${meta.d} Dokumente (${meta.t} mit Volltext), ${meta.n} Knoten. ` +
+         `Suche oben, Filter darunter.`);
+} catch (err) {
+  bootMsg(`Fehler: ${err.message}`);
+  console.error(err);
+}
