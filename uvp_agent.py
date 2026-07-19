@@ -933,12 +933,20 @@ def run(force_refresh: bool = False) -> None:
         print()
 
 
+COMPRESS_TIMEOUT_SECS = 120  # a malformed source PDF can make MuPDF spin near-forever
+
+
 def compress_existing() -> None:
-    """Scan DOWNLOAD_DIR for already-downloaded PDFs >=COMPRESS_MAX_BYTES and shrink them in place."""
+    """Scan DOWNLOAD_DIR for already-downloaded PDFs >=COMPRESS_MAX_BYTES and shrink them
+    in place. Each file is compressed in its own subprocess with a hard timeout, so one
+    malformed PDF (MuPDF can hang indefinitely trying to repair a broken xref) can't stall
+    the whole batch.
+    """
     try:
         import fitz  # noqa: F401
     except ImportError:
         sys.exit("Error: pymupdf ist nicht installiert. 'pip install pymupdf' ausführen.")
+    import subprocess
 
     candidates = sorted(
         p for p in DOWNLOAD_DIR.rglob("*.pdf")
@@ -949,20 +957,31 @@ def compress_existing() -> None:
         return
 
     print(f"{len(candidates)} Datei(en) >=10MB gefunden.\n")
-    n_ok, n_fail = 0, 0
+    n_ok, n_fail, n_timeout = 0, 0, 0
     for i, path in enumerate(candidates, 1):
         before = path.stat().st_size
         rel = path.relative_to(DOWNLOAD_DIR)
-        if _compress_pdf(path):
-            after = path.stat().st_size
+        try:
+            r = subprocess.run(
+                [sys.executable, __file__, "--compress-one", str(path)],
+                capture_output=True, text=True, timeout=COMPRESS_TIMEOUT_SECS,
+            )
+            ok = r.returncode == 0
+        except subprocess.TimeoutExpired:
+            ok = False
+            print(f"[{i}/{len(candidates)}] TIMEOUT {rel}: >={COMPRESS_TIMEOUT_SECS}s, vermutlich beschädigte PDF — übersprungen")
+            n_timeout += 1
+            continue
+
+        after = path.stat().st_size
+        if ok:
             print(f"[{i}/{len(candidates)}] OK  {rel}: {before:,} -> {after:,} B")
             n_ok += 1
         else:
-            after = path.stat().st_size
             status = "unverändert" if after == before else f"{before:,} -> {after:,} B (weiterhin >=10MB)"
             print(f"[{i}/{len(candidates)}] FAIL {rel}: {status}")
             n_fail += 1
-    print(f"\nFertig: {n_ok} komprimiert, {n_fail} weiterhin >=10MB.")
+    print(f"\nFertig: {n_ok} komprimiert, {n_fail} weiterhin >=10MB, {n_timeout} übersprungen (Timeout).")
 
 
 def main() -> None:
@@ -979,8 +998,16 @@ def main() -> None:
         action="store_true",
         help="Shrink already-downloaded PDFs >=10MB in place, then exit (no chat session).",
     )
+    parser.add_argument(
+        "--compress-one",
+        metavar="PATH",
+        help=argparse.SUPPRESS,  # internal: single-file worker used by --compress via subprocess
+    )
     main.__doc__ = None
     args = parser.parse_args()
+    if args.compress_one:
+        ok = _compress_pdf(Path(args.compress_one))
+        sys.exit(0 if ok else 1)
     if args.compress:
         compress_existing()
         return
