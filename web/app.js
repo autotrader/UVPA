@@ -3,8 +3,10 @@
 // extrahierten Volltext sofort im Browser anzeigen. Das Beziehungsnetzwerk
 // (Cytoscape) ist die Kontext-Ansicht dazu. Bewusst ohne KI — nur SQL.
 //
-// Datenquelle: graph.db (dev, unverschlüsselt) oder graph.db.enc
-// (prod, AES-256-GCM — Gegenstück zu tools/encrypt.mjs).
+// Datenquellen: graph.db (unverschlüsselt von Pages), Original-PDFs direkt
+// aus dem öffentlichen GitHub-Repo (jsDelivr-CDN). Das Passwort-Gate ist
+// bewusst nur eine Nutzungshürde (Hash-Vergleich), kein Datenschutz — die
+// Dokumente sind amtlich öffentlich.
 
 import * as duckdb from "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.33.1-dev57.0/+esm";
 
@@ -19,83 +21,52 @@ const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const TYPE_NAMES = { EI: "Einladung", NI: "Niederschrift", SU: "Sitzungsunterlagen",
                      BL: "Beschluss", VO: "Beschlussvorlage", AN: "Anlage" };
 
-// ── Entschlüsselung (Format: [16 B Salt][12 B IV][AES-256-GCM-Ciphertext]) ──
-// DB und gehostete PDFs nutzen dasselbe Format; die PDFs teilen sich einen
-// Salt pro Deployment, daher lohnt ein Cache für den abgeleiteten Schlüssel.
+// ── Zugangs-Gate (einfacher Frontend-Schutz, keine Verschlüsselung) ─────────
+// Der Deploy-Workflow legt auth.json mit einem PBKDF2-Hash von SITE_PASSWORD
+// ab. Fehlt auth.json (lokaler Dev-Modus), gibt es kein Gate.
 
-const keyCache = new Map();
-
-async function deriveKey(password, salt) {
-  const cacheId = password.length + ":" +
-    [...salt].map((b) => b.toString(16).padStart(2, "0")).join("");
-  if (keyCache.has(cacheId)) return keyCache.get(cacheId);
+async function pbkdf2Hex(password, saltHex, iterations) {
+  const salt = Uint8Array.from(saltHex.match(/.{2}/g).map((b) => parseInt(b, 16)));
   const material = await crypto.subtle.importKey(
-    "raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
-  const key = await crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt, iterations: 310_000, hash: "SHA-256" },
-    material, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
-  keyCache.set(cacheId, key);
-  return key;
+    "raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt, iterations, hash: "SHA-256" }, material, 256);
+  return [...new Uint8Array(bits)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-async function decryptBytes(encBytes, password) {
-  const key = await deriveKey(password, encBytes.slice(0, 16));
-  const plain = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: encBytes.slice(16, 28) }, key, encBytes.slice(28));
-  return new Uint8Array(plain);
-}
+async function checkAuth() {
+  let auth;
+  try {
+    const r = await fetch("auth.json");
+    if (!r.ok) return;                       // Dev-Modus: kein Gate konfiguriert
+    auth = await r.json();
+  } catch { return; }
+  if (sessionStorage.getItem("uvpa_auth") === auth.hash) return;
 
-const decryptDb = decryptBytes;
-
-/**
- * Passwort-Gate anzeigen; `validator(pw)` muss bei falschem Passwort werfen.
- * Bei Erfolg wird das Passwort für die Session gemerkt (auch der PDF-Viewer
- * nutzt es dann). Wird sowohl beim DB-Laden als auch on demand für
- * verschlüsselte PDFs verwendet.
- */
-function promptPassword(validator) {
   $("boot").hidden = true;
   $("gate").hidden = false;
   $("gate-pw").focus();
-  return new Promise((resolve) => {
-    const form = $("gate-form");
-    const handler = async (ev) => {
+  await new Promise((resolve) => {
+    $("gate-form").addEventListener("submit", async (ev) => {
       ev.preventDefault();
-      try {
-        const result = await validator($("gate-pw").value);
-        sessionStorage.setItem("uvpa_pw", $("gate-pw").value);
-        form.removeEventListener("submit", handler);
+      const hash = await pbkdf2Hex($("gate-pw").value, auth.salt, auth.iterations);
+      if (hash === auth.hash) {
+        sessionStorage.setItem("uvpa_auth", hash);
         $("gate").hidden = true;
-        $("gate-error").hidden = true;
-        resolve(result);
-      } catch {
+        resolve();
+      } else {
         $("gate-error").hidden = false;
         $("gate-pw").select();
       }
-    };
-    form.addEventListener("submit", handler);
+    });
   });
-}
-
-async function askPassword(encBytes) {
-  const cached = sessionStorage.getItem("uvpa_pw");
-  if (cached !== null) {
-    try { return await decryptDb(encBytes, cached); }
-    catch { sessionStorage.removeItem("uvpa_pw"); }
-  }
-  const bytes = await promptPassword((pw) => decryptDb(encBytes, pw));
   $("boot").hidden = false;
-  return bytes;
 }
 
 async function loadDbBytes() {
-  let r = await fetch("graph.db");            // Dev-Modus: unverschlüsselt
-  if (r.ok) return new Uint8Array(await r.arrayBuffer());
-  bootMsg("Lade verschlüsselte Datenbank …");
-  r = await fetch("graph.db.enc");
-  if (!r.ok) throw new Error("Weder graph.db noch graph.db.enc gefunden.");
-  const enc = new Uint8Array(await r.arrayBuffer());
-  return askPassword(enc);
+  const r = await fetch("graph.db");
+  if (!r.ok) throw new Error("graph.db nicht gefunden.");
+  return new Uint8Array(await r.arrayBuffer());
 }
 
 // ── DuckDB-Wasm ──────────────────────────────────────────────────────────────
@@ -217,10 +188,15 @@ function highlight(escapedHtml) {
 
 // ── Dokument-Leseansicht ─────────────────────────────────────────────────────
 
-// Diese Typen werden (verschlüsselt) mit auf Pages deployt und können inline
-// angezeigt werden; Anlagen (2,4 GB) sprengen das Pages-Limit und bleiben
-// Text-Reader + RIS-Download.
-const HOSTED_TYPES = new Set(["VO", "BL", "EI", "NI"]);
+// Original-PDFs kommen direkt aus dem öffentlichen GitHub-Repo. Wir holen die
+// Bytes selbst und zeigen sie als Blob mit PDF-Content-Type im nativen
+// Browser-Viewer — so funktioniert es unabhängig davon, welche Header die
+// Quelle sendet. Nach dem Umzug zur Organisation nur REPO anpassen.
+const REPO = "autotrader/UVPA";
+const PDF_SOURCES = [
+  (p) => `https://cdn.jsdelivr.net/gh/${REPO}@main/${p}`,
+  (p) => `https://raw.githubusercontent.com/${REPO}/main/${p}`,
+];
 let pdfBlobUrl = null;
 
 function notice(msg) {
@@ -229,25 +205,16 @@ function notice(msg) {
   el.hidden = !msg;
 }
 
-/**
- * Gehostetes PDF laden: erst unverschlüsselt (Dev), dann .enc mit dem
- * Session-Passwort. Fehlt das Passwort (Dev-Modus ohne Gate) oder stimmt es
- * nicht mehr, erscheint das Passwort-Gate on demand.
- * null = Datei ist wirklich nicht deployt.
- */
+/** PDF-Bytes laden; null = Datei nicht im Repository (oder offline). */
 async function fetchDocPdf(path) {
-  const rel = "docs/" + encodeURI(path);
-  let r = await fetch(rel);
-  if (r.ok) return new Uint8Array(await r.arrayBuffer());
-  r = await fetch(rel + ".enc");
-  if (!r.ok) return null;
-  const enc = new Uint8Array(await r.arrayBuffer());
-  const pw = sessionStorage.getItem("uvpa_pw");
-  if (pw !== null) {
-    try { return await decryptBytes(enc, pw); }
-    catch { sessionStorage.removeItem("uvpa_pw"); }
+  const p = encodeURI(path);
+  for (const src of PDF_SOURCES) {
+    try {
+      const r = await fetch(src(p));
+      if (r.ok) return new Uint8Array(await r.arrayBuffer());
+    } catch { /* Quelle nicht erreichbar — nächste probieren */ }
   }
-  return promptPassword((p) => decryptBytes(enc, p));
+  return null;
 }
 
 async function showDocPdf(d) {
@@ -255,8 +222,8 @@ async function showDocPdf(d) {
   status("Lade PDF …");
   const bytes = await fetchDocPdf(d.path);
   if (!bytes) {
-    notice("Dieses PDF ist nicht im Deployment enthalten (Datei fehlt im Repository) — " +
-           "bitte das Original über den RIS-Link laden.");
+    notice("Dieses PDF liegt nicht im Repository (z. B. übergroße Sitzungsunterlagen) " +
+           "oder es besteht keine Internetverbindung — bitte das Original über den RIS-Link laden.");
     status("PDF nicht verfügbar.");
     return;
   }
@@ -266,7 +233,7 @@ async function showDocPdf(d) {
     `<iframe class="pdf-frame" src="${pdfBlobUrl}" title="PDF-Ansicht"></iframe>`;
   $("btn-pdf").classList.add("active");
   $("btn-text")?.classList.remove("active");
-  status(`PDF angezeigt (${(bytes.length / 1048576).toFixed(1)} MB, im Browser entschlüsselt).`);
+  status(`PDF angezeigt (${(bytes.length / 1048576).toFixed(1)} MB).`);
 }
 
 async function openDoc(id) {
@@ -279,16 +246,13 @@ async function openDoc(id) {
   activateTab("doc");
 
   const tc = d.type_code || "AN";
-  const hosted = HOSTED_TYPES.has(tc);
   const html = `<div class="doc-head">
     <h3><span class="badge">${escHtml(tc)}</span>${escHtml(d.title)}</h3>
     <p class="meta">${TYPE_NAMES[tc] ?? tc} · ${d.date ?? ""}${d.pages ? ` · ${d.pages} Seiten` : ""}</p>
     <p class="meta">${escHtml(d.top_label)}${d.vorlage_nr ? " · Vorlage " + escHtml(d.vorlage_nr) : ""}</p>
     <div class="doc-actions">
-      ${hosted ? `<button id="btn-text" class="active" type="button">Text</button>
-                  <button id="btn-pdf" type="button">PDF</button>`
-               : `<button type="button" disabled
-                    title="Anlagen sind nicht mit deployt (zu groß) — Original über den RIS-Link laden.">PDF</button>`}
+      <button id="btn-text" class="active" type="button">Text</button>
+      <button id="btn-pdf" type="button">PDF</button>
       <a href="${escHtml(d.url)}" target="_blank" rel="noopener"
          title="${escHtml(d.path)}">⬇ Original-PDF (RIS)</a>
       <button id="btn-context" type="button">⛬ Kontext im Netzwerk</button>
@@ -300,14 +264,12 @@ async function openDoc(id) {
   $("doc-view").innerHTML = html;
   renderDocText(d);
   $("btn-context").addEventListener("click", () => focusNode(d.node_id));
-  if (hosted) {
-    $("btn-pdf").addEventListener("click", () => showDocPdf(d));
-    $("btn-text").addEventListener("click", () => {
-      renderDocText(d);
-      $("btn-text").classList.add("active");
-      $("btn-pdf").classList.remove("active");
-    });
-  }
+  $("btn-pdf").addEventListener("click", () => showDocPdf(d));
+  $("btn-text").addEventListener("click", () => {
+    renderDocText(d);
+    $("btn-text").classList.add("active");
+    $("btn-pdf").classList.remove("active");
+  });
   $("panel-doc").scrollTop = 0;
   document.querySelector("#doc-body .doc-page mark")
     ?.scrollIntoView({ block: "center" });
@@ -324,9 +286,7 @@ function renderDocText(d) {
   } else {
     $("doc-body").innerHTML = `<p class="hint">Für dieses Dokument liegt kein
       extrahierter Text vor (vermutlich gescannt oder Datei nicht im Repository).
-      ${HOSTED_TYPES.has(d.type_code || "AN")
-        ? "Über den PDF-Button lässt sich das Original direkt anzeigen."
-        : "Bitte das Original-PDF über den RIS-Link herunterladen."}</p>`;
+      Über den PDF-Button lässt sich das Original meist direkt anzeigen.</p>`;
   }
 }
 
@@ -476,6 +436,8 @@ async function populateFilters() {
 // ── Boot ─────────────────────────────────────────────────────────────────────
 
 try {
+  await checkAuth();
+  bootMsg("Lade Datenbank …");
   const bytes = await loadDbBytes();
   await initDb(bytes);
   await populateFilters();

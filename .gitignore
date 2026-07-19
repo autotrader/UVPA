@@ -9,10 +9,9 @@ obj/
 # GitHub Pages deployt, nicht ins Repo committet (>10MB Pre-Commit-Limit).
 graph.db
 graph.db.wal
-graph.db.enc
 
-# Lokale Build-/Testartefakte des Frontends
-web/docs/
+# Lokale Build-/Testartefakte
+web/auth.json
 _site/
 node_modules/
 

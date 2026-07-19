@@ -5,21 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <title>UVPA Erlangen — Dokumentensuche</title>
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=5">
   <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.34.0/dist/cytoscape.min.js"></script>
 </head>
 <body>
 
-  <!-- Passwort-Gate (nur sichtbar, wenn graph.db.enc geladen wird) -->
+  <!-- Zugangs-Gate (erscheint nur, wenn auth.json deployt ist) -->
   <div id="gate" class="overlay" hidden>
     <form id="gate-form" class="gate-card">
       <h1>UVPA Erlangen</h1>
       <p>Dokumentensuche über die Ausschussarbeit 2020–2026.<br>
-         Zugang nur mit Passwort.</p>
+         Bitte das Zugangspasswort eingeben.</p>
       <input id="gate-pw" type="password" autocomplete="current-password"
              placeholder="Passwort" autofocus required>
-      <button type="submit">Entsperren</button>
-      <p id="gate-error" class="error" hidden>Falsches Passwort — Entschlüsselung fehlgeschlagen.</p>
+      <button type="submit">Anmelden</button>
+      <p id="gate-error" class="error" hidden>Das Passwort ist leider falsch.</p>
     </form>
   </div>
 
@@ -97,6 +97,6 @@
 
   <footer id="statusbar">Lade …</footer>
 
-  <script type="module" src="app.js?v=4"></script>
+  <script type="module" src="app.js?v=5"></script>
 </body>
 </html>
