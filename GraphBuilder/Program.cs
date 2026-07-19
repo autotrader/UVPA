@@ -93,7 +93,8 @@ foreach (var session in sessions)
             ? $"t:{top.Ktonr}"
             : $"t:{session.Date}:{top.TopNrSafe}:{t}";
         nodes[topId] = new NodeRow(
-            topId, "top", $"{top.TopNr} {top.Title}", date, top.TopNr, top.VorlageNr, top.Folder);
+            topId, "top", $"{top.TopNr} {top.Title}", date, top.TopNr, top.VorlageNr, top.Folder,
+            EntityExtractor.ExtractAntragsteller(top.Title));
         edges.Add(new EdgeRow(topId, sessionId, "in_session", 1));
 
         if (top.VorlageNr.Length > 0)
@@ -153,12 +154,52 @@ void CountEntities(string topId, string text, string? ownVorlage)
     }
 }
 
+// LLM-Anreicherung (enrichment/docs/<pfad>.md): Frontmatter mit Themen + Zusammenfassung
+(string? Summary, string? Themen) ReadEnrichment(string relPath)
+{
+    var mdPath = Path.Combine(repoRoot, "enrichment", "docs", relPath + ".md");
+    if (!File.Exists(mdPath))
+        return (null, null);
+    var lines = File.ReadAllLines(mdPath);
+    if (lines.Length < 3 || lines[0].Trim() != "---")
+        return (null, null);
+    var end = Array.FindIndex(lines, 1, l => l.Trim() == "---");
+    if (end < 0)
+        return (null, null);
+
+    string? themen = null;
+    foreach (var line in lines[1..end])
+    {
+        if (line.StartsWith("themen:", StringComparison.Ordinal))
+        {
+            try
+            {
+                var list = JsonSerializer.Deserialize<List<string>>(line["themen:".Length..].Trim());
+                themen = list is { Count: > 0 } ? string.Join(",", list) : null;
+            }
+            catch (JsonException) { /* fehlerhafte Frontmatter — Themen auslassen */ }
+        }
+    }
+    var body = string.Join("\n", lines[(end + 1)..]).Trim();
+    return (body.Length > 0 ? body : null, themen);
+}
+
 var finalDocs = new List<DocumentRow>();
+var enrichedCount = 0;
 foreach (var (row, absPath, ownerTopId) in docRows)
 {
     var (text, pages) = absPath is not null && texts.TryGetValue(absPath, out var t)
         ? t : ("", 0);
-    finalDocs.Add(row with { Pages = pages, Text = text.Length > 0 ? text : null });
+    var (summary, themen) = ReadEnrichment(row.Path);
+    if (summary is not null)
+        enrichedCount++;
+    finalDocs.Add(row with
+    {
+        Pages = pages,
+        Text = text.Length > 0 ? text : null,
+        Summary = summary,
+        Themen = themen,
+    });
 
     if (ownerTopId.Length > 0 && text.Length > 0)
     {
@@ -281,7 +322,8 @@ using (var db = new GraphDb(dbPath))
     Console.WriteLine($"  Knoten:    {db.Count("nodes")}");
     Console.WriteLine($"  Kanten:    {db.Count("edges")}");
     Console.WriteLine($"  Dokumente: {db.Count("documents")} " +
-        $"(davon {db.Count("documents WHERE text IS NOT NULL")} mit Volltext)");
+        $"(davon {db.Count("documents WHERE text IS NOT NULL")} mit Volltext, " +
+        $"{enrichedCount} mit Zusammenfassung)");
     Console.WriteLine($"  Pläne:     {db.Count("plans WHERE kind = 'plan'")} " +
         $"({db.Count("plan_files pf JOIN plans p ON p.id = pf.plan_id WHERE p.kind = 'plan'")} Dateien)");
     Console.WriteLine($"  Recht:     {db.Count("plans WHERE kind = 'recht'")} " +

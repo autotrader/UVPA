@@ -60,4 +60,44 @@ public static partial class EntityExtractor
     /// <summary>Normalisiert eine Vorlagen-Nummer aus index.json auf den Entitäts-Key.</summary>
     public static string NormalizeVorlage(string vorlageNr) =>
         vorlageNr.Trim().ToUpperInvariant();
+
+    // Erlanger Stadtratsfraktionen/-gruppen; Reihenfolge = Priorität bei Mehrfachtreffern.
+    private static readonly (string Token, string Name)[] Fraktionen =
+    [
+        ("Grüne Liste", "Grüne Liste"), ("Grünen", "Grüne Liste"), ("GL-Fraktion", "Grüne Liste"),
+        ("SPD", "SPD"), ("CSU", "CSU"), ("FDP", "FDP"),
+        ("Erlanger Linke", "Erlanger Linke"), ("Linke", "Erlanger Linke"),
+        ("ÖDP", "ÖDP"), ("OeDP", "ÖDP"),
+        ("Freie Wähler", "Freie Wähler"), ("FWG", "Freie Wähler"),
+        ("Klimaliste", "Klimaliste"), ("AfD", "AfD"),
+    ];
+
+    /// <summary>
+    /// Erkennt den Antragsteller aus einem TOP-Titel: Fraktion, Stadtteil-/Ortsbeirat
+    /// oder Bürgerversammlung. Null, wenn kein Antragsteller erkennbar (Verwaltungsvorlage).
+    /// </summary>
+    public static string? ExtractAntragsteller(string topTitle)
+    {
+        if (topTitle.Contains("Stadtteilbeirat", StringComparison.OrdinalIgnoreCase) ||
+            topTitle.Contains("StBR", StringComparison.Ordinal))
+            return "Stadtteilbeirat";
+        if (topTitle.Contains("Ortsbeirat", StringComparison.OrdinalIgnoreCase) ||
+            topTitle.Contains("OBR", StringComparison.Ordinal))
+            return "Ortsbeirat";
+        if (topTitle.Contains("Bürgerversammlung", StringComparison.OrdinalIgnoreCase))
+            return "Bürgerversammlung";
+
+        // Fraktionen nur in Antrags-Kontext erkennen, nicht bei bloßer Erwähnung
+        var isAntrag = topTitle.Contains("Antrag", StringComparison.OrdinalIgnoreCase) ||
+                       topTitle.Contains("Fraktion", StringComparison.OrdinalIgnoreCase) ||
+                       topTitle.Contains("Stadtratsgruppe", StringComparison.OrdinalIgnoreCase);
+        if (!isAntrag)
+            return null;
+        foreach (var (token, name) in Fraktionen)
+        {
+            if (topTitle.Contains(token, StringComparison.Ordinal))
+                return name;
+        }
+        return null;
+    }
 }

@@ -42,3 +42,6 @@ node_modules/
 2020-12-08/SU_Sitzungsunterlagen_oeffentlich.pdf
 2021-06-15/SU_Sitzungsunterlagen_oeffentlich.pdf
 2020-05-19/TOP_Oe11_611-324-2020_5_Deckblatt_zum_Bebauungsplan_Nr_402_Nahverso/Anlage_5_-_Ueberarbeitung_Siegerentwurf_Stand_April_2020.pdf
+
+# Enrichment-Laufzeitzustand (Batch-IDs), nicht die .md-Ergebnisse selbst
+enrichment/.batch_state.json

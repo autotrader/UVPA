@@ -146,6 +146,11 @@ main { flex: 1; display: flex; min-height: 0; }
 }
 .doc-head h3 { margin: 0 0 .3rem; font-size: 1.05rem; }
 .doc-head .meta { color: var(--ink-2); font-size: .8rem; margin: .1rem 0; }
+.doc-summary {
+  margin: .5rem 0 .2rem; padding: .5rem .8rem;
+  background: var(--page); border-left: 3px solid var(--c-top); border-radius: 0 6px 6px 0;
+  font-size: .85rem; line-height: 1.5; color: var(--ink);
+}
 .doc-actions { margin-top: .6rem; display: flex; gap: .5rem; flex-wrap: wrap; }
 .doc-actions a, .doc-actions button {
   font-size: .8rem; padding: .35rem .7rem; cursor: pointer;

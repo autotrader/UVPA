@@ -5,12 +5,14 @@ namespace GraphBuilder;
 /// <summary>Zeile für die documents-Tabelle (Volltext-Basis für FTS).</summary>
 public sealed record DocumentRow(
     string Id, string FileId, string NodeId, string TypeCode,
-    string Title, string Path, string Url, int Pages, string? Text);
+    string Title, string Path, string Url, int Pages, string? Text,
+    string? Summary = null, string? Themen = null);
 
 /// <summary>Knoten des Graphen: Sitzungen, TOPs und Entitäten (Vorlage/Ort/B-Plan).</summary>
 public sealed record NodeRow(
     string Id, string Type, string Label,
-    DateTime? Date, string? TopNr, string? VorlageNr, string? Folder);
+    DateTime? Date, string? TopNr, string? VorlageNr, string? Folder,
+    string? Antragsteller = null);
 
 public sealed record EdgeRow(string Source, string Target, string Type, int Weight);
 
@@ -42,7 +44,8 @@ public sealed class GraphDb : IDisposable
             date       DATE,                 -- Sitzungsdatum (nur session/top) bzw. Erstelldatum (plan/recht)
             top_nr     VARCHAR,
             vorlage_nr VARCHAR,
-            folder     VARCHAR               -- Repo-Pfad für Deep-Links ins Frontend
+            folder     VARCHAR,              -- Repo-Pfad für Deep-Links ins Frontend
+            antragsteller VARCHAR            -- Fraktion/Beirat/Bürgerversammlung (nur top, aus Titel-Regex)
         );
 
         CREATE TABLE edges (
@@ -61,7 +64,9 @@ public sealed class GraphDb : IDisposable
             path      VARCHAR,                -- Pfad relativ zur Repo-Wurzel
             url       VARCHAR,                -- Original-URL im Ratsinformationssystem
             pages     INTEGER,
-            text      VARCHAR                 -- extrahierter Volltext (NULL = Datei fehlt/Scan)
+            text      VARCHAR,                -- extrahierter Volltext (NULL = Datei fehlt/Scan)
+            summary   VARCHAR,                -- LLM-Zusammenfassung (enrichment/docs/<pfad>.md)
+            themen    VARCHAR                 -- kommagetrennte Themen aus der kuratierten Taxonomie
         );
 
         CREATE TABLE plans (
@@ -91,7 +96,7 @@ public sealed class GraphDb : IDisposable
             var row = appender.CreateRow();
             row.AppendValue(n.Id).AppendValue(n.Type).AppendValue(n.Label)
                .AppendValue(n.Date).AppendValue(n.TopNr).AppendValue(n.VorlageNr)
-               .AppendValue(n.Folder).EndRow();
+               .AppendValue(n.Folder).AppendValue(n.Antragsteller).EndRow();
         }
     }
 
@@ -114,7 +119,8 @@ public sealed class GraphDb : IDisposable
             var row = appender.CreateRow();
             row.AppendValue(d.Id).AppendValue(d.FileId).AppendValue(d.NodeId)
                .AppendValue(d.TypeCode).AppendValue(d.Title).AppendValue(d.Path)
-               .AppendValue(d.Url).AppendValue(d.Pages).AppendValue(d.Text).EndRow();
+               .AppendValue(d.Url).AppendValue(d.Pages).AppendValue(d.Text)
+               .AppendValue(d.Summary).AppendValue(d.Themen).EndRow();
         }
     }
 
@@ -159,7 +165,7 @@ public sealed class GraphDb : IDisposable
         """
         INSTALL fts;
         LOAD fts;
-        PRAGMA create_fts_index('documents', 'id', 'title', 'text', stemmer='german', stopwords='none');
+        PRAGMA create_fts_index('documents', 'id', 'title', 'summary', 'text', stemmer='german', stopwords='none');
         PRAGMA create_fts_index('plan_files', 'rowid', 'titel', 'text', stemmer='german', stopwords='none');
         """);
 

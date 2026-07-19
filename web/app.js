@@ -101,16 +101,21 @@ let lastTerms = [];
 
 function currentFilters() {
   return { year: $("f-year").value, type: $("f-type").value,
-           ort: $("f-ort").value, sort: $("f-sort").value };
+           ort: $("f-ort").value, sort: $("f-sort").value,
+           thema: $("f-thema").value, antrag: $("f-antrag").value };
 }
 
 function filterConds(f) {
   const conds = [];
   if (f.year) conds.push(`year(n.date) = ${Number(f.year)}`);
   if (f.type === "AN") conds.push(`d.type_code = ''`);
-  else if (f.type) conds.push(`d.type_code = '${esc(f.type)}'`);
+  else if (f.type && f.type !== "PLAN" && f.type !== "RECHT")
+    conds.push(`d.type_code = '${esc(f.type)}'`);
   if (f.ort) conds.push(
     `EXISTS (SELECT 1 FROM edges e WHERE e.source = d.node_id AND e.target = 'o:${esc(f.ort)}')`);
+  if (f.thema) conds.push(`(',' || d.themen || ',') LIKE '%,${esc(f.thema)},%'`);
+  if (f.antrag) conds.push(
+    `EXISTS (SELECT 1 FROM nodes an WHERE an.id = d.node_id AND an.antragsteller = '${esc(f.antrag)}')`);
   return conds;
 }
 
@@ -121,12 +126,14 @@ async function runSearch() {
   lastTerms = query.split(/\s+/).map((w) => w.replace(/[^\p{L}\p{N}\/.\-]/gu, ""))
                    .filter((w) => w.length >= 3).slice(0, 8);
 
-  // Pläne/Rechtsvorschriften haben kein Sitzungsdatum/keinen Stadtteil-Bezug
-  // im Beziehungsnetz — bei aktivem Jahres- oder Stadtteilfilter tauchen sie
-  // in der Trefferliste konsequent nicht auf (Filter-Bedeutung sonst irreführend).
+  // Pläne/Rechtsvorschriften haben kein Sitzungsdatum, keinen Stadtteil-Bezug
+  // und keinen Antragsteller — bei diesen Filtern tauchen sie konsequent nicht
+  // auf. Der Themen-Filter gilt dagegen auch für sie (Registry pflegt Themen).
   const registryKind = f.type === "PLAN" ? "plan" : f.type === "RECHT" ? "recht" : null;
-  const includeRegistry = (!f.type || registryKind) && !f.year && !f.ort;
+  const includeRegistry = (!f.type || registryKind) && !f.year && !f.ort && !f.antrag;
   const includeDocs = !registryKind;
+  const registryThemaCond = f.thema
+    ? `AND (',' || p.themen || ',') LIKE '%,${esc(f.thema)},%'` : "";
   let rows;
   if (query) {
     status(`Suche „${query}“ …`);
@@ -134,7 +141,7 @@ async function runSearch() {
     const order = f.sort === "date" ? "n.date DESC, s.score DESC" : "s.score DESC";
     rows = includeDocs ? await q(
       `SELECT d.id, 'doc' AS kind, d.title, d.type_code, d.node_id, d.pages,
-              n.label AS top_label, n.date::VARCHAR AS date, n.vorlage_nr, s.score
+              d.summary, n.label AS top_label, n.date::VARCHAR AS date, n.vorlage_nr, s.score
        FROM (SELECT id, fts_main_documents.match_bm25(id, '${esc(query)}') AS score
              FROM documents) s
        JOIN documents d ON d.id = s.id
@@ -161,26 +168,26 @@ async function runSearch() {
                   p.title AS top_label, p.themen,
                   fts_main_plan_files.match_bm25(pf.rowid, '${esc(query)}') AS score
            FROM plan_files pf JOIN plans p ON p.id = pf.plan_id
-           WHERE 1=1 ${kindCond}
+           WHERE 1=1 ${kindCond} ${registryThemaCond}
          ) WHERE score IS NOT NULL ORDER BY score DESC LIMIT 15`);
       rows = [...rows, ...planRows].sort((a, b) => b.score - a.score);
     }
     renderResults(rows, `${rows.length} Treffer`);
     status(`${rows.length} Treffer für „${query}“.`);
   } else if (registryKind) {
-    rows = (f.year || f.ort) ? [] : await q(
+    rows = (f.year || f.ort || f.antrag) ? [] : await q(
       `SELECT p.id, 'plan' AS kind, p.kind AS pkind, p.title AS top_label, p.themen, p.beschreibung
-       FROM plans p WHERE p.kind = '${esc(registryKind)}' ORDER BY p.title`);
+       FROM plans p WHERE p.kind = '${esc(registryKind)}' ${registryThemaCond} ORDER BY p.title`);
     const label = registryKind === "recht" ? "Rechtsvorschriften" : "Pläne & Konzepte";
     renderResults(rows, `${rows.length} ${label}`);
-    status(f.year || f.ort
-      ? `${label} haben kein Sitzungsjahr/keinen Stadtteil-Bezug — Jahres-/Stadtteilfilter zurücksetzen, um sie zu sehen.`
+    status((f.year || f.ort || f.antrag)
+      ? `${label} haben kein Sitzungsjahr, keinen Stadtteil- und keinen Antragsteller-Bezug — diese Filter zurücksetzen, um sie zu sehen.`
       : `${rows.length} ${label} angezeigt.`);
   } else {
     const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
     rows = await q(
       `SELECT d.id, 'doc' AS kind, d.title, d.type_code, d.node_id, d.pages,
-              n.label AS top_label, n.date::VARCHAR AS date, n.vorlage_nr
+              d.summary, n.label AS top_label, n.date::VARCHAR AS date, n.vorlage_nr
        FROM documents d JOIN nodes n ON n.id = d.node_id
        ${where} ORDER BY n.date DESC, d.title LIMIT 50`);
     renderResults(rows, conds.length ? `${rows.length} Dokumente (gefiltert)` : "Neueste Dokumente");
@@ -208,7 +215,8 @@ function renderResults(rows, title) {
         <div class="r-title"><span class="badge">${escHtml(r.type_code || "AN")}</span>${escHtml(r.title)}</div>
         <div class="r-meta">${r.date ?? ""}${r.vorlage_nr ? " · " + escHtml(r.vorlage_nr) : ""}
           · ${escHtml(shortLabel(r.top_label ?? "", 55))}${r.score != null ? ` · Score ${r.score.toFixed(2)}` : ""}</div>
-        ${r.snippet ? `<div class="r-snippet">… ${highlight(escHtml(r.snippet))} …</div>` : ""}
+        ${r.snippet ? `<div class="r-snippet">… ${highlight(escHtml(r.snippet))} …</div>`
+          : r.summary ? `<div class="r-snippet">${escHtml(shortLabel(r.summary, 200))}</div>` : ""}
       </li>`;
   }).join("");
   for (const li of $("results-list").querySelectorAll("li"))
@@ -318,6 +326,7 @@ async function showDocPdf(d) {
 async function openDoc(id) {
   const [d] = await q(
     `SELECT d.id, d.title, d.type_code, d.node_id, d.path, d.url, d.pages, d.text,
+            d.summary, d.themen,
             n.label AS top_label, n.date::VARCHAR AS date, n.vorlage_nr
      FROM documents d JOIN nodes n ON n.id = d.node_id
      WHERE d.id = '${esc(id)}'`);
@@ -329,6 +338,8 @@ async function openDoc(id) {
     <h3><span class="badge">${escHtml(tc)}</span>${escHtml(d.title)}</h3>
     <p class="meta">${TYPE_NAMES[tc] ?? tc} · ${d.date ?? ""}${d.pages ? ` · ${d.pages} Seiten` : ""}</p>
     <p class="meta">${escHtml(d.top_label)}${d.vorlage_nr ? " · Vorlage " + escHtml(d.vorlage_nr) : ""}</p>
+    ${d.summary ? `<p class="doc-summary">${escHtml(d.summary)}</p>` : ""}
+    ${d.themen ? `<p class="meta">Themen: ${escHtml(d.themen.replaceAll(",", ", "))}</p>` : ""}
     <div class="doc-actions">
       <button id="btn-text" class="active" type="button">Text</button>
       <button id="btn-pdf" type="button">PDF</button>
@@ -595,6 +606,21 @@ async function populateFilters() {
   const orte = await q("SELECT label FROM nodes WHERE type='ort' ORDER BY label");
   $("f-ort").insertAdjacentHTML("beforeend",
     orte.map((r) => `<option value="${escHtml(r.label)}">${escHtml(r.label)}</option>`).join(""));
+
+  // Themen aus Dokumenten UND Registry (Pläne/Recht) — zeigt nur real Vorhandenes
+  const themen = await q(
+    `SELECT DISTINCT trim(t) AS thema FROM (
+       SELECT unnest(string_split(themen, ',')) AS t FROM documents WHERE themen IS NOT NULL
+       UNION ALL
+       SELECT unnest(string_split(themen, ',')) AS t FROM plans WHERE themen IS NOT NULL AND themen != ''
+     ) WHERE trim(t) != '' ORDER BY thema`);
+  $("f-thema").insertAdjacentHTML("beforeend",
+    themen.map((r) => `<option value="${escHtml(r.thema)}">${escHtml(r.thema)}</option>`).join(""));
+
+  const antrag = await q(
+    "SELECT DISTINCT antragsteller AS a FROM nodes WHERE antragsteller IS NOT NULL ORDER BY 1");
+  $("f-antrag").insertAdjacentHTML("beforeend",
+    antrag.map((r) => `<option value="${escHtml(r.a)}">${escHtml(r.a)}</option>`).join(""));
 }
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
@@ -607,7 +633,7 @@ try {
   await populateFilters();
 
   $("search-form").addEventListener("submit", (ev) => { ev.preventDefault(); runSearch(); });
-  for (const id of ["f-year", "f-type", "f-ort", "f-sort"])
+  for (const id of ["f-thema", "f-antrag", "f-year", "f-type", "f-ort", "f-sort"])
     $(id).addEventListener("change", runSearch);
   $("tab-doc").addEventListener("click", () => activateTab("doc"));
   $("tab-net").addEventListener("click", () => activateTab("net"));
