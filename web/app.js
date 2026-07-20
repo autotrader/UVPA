@@ -595,10 +595,17 @@ function activateTab(which) {
   $("tab-net").classList.toggle("active", !isDoc);
   $("panel-doc").hidden = !isDoc;
   $("panel-net").hidden = isDoc;
+  // Auf Mobil den Viewer in den Vordergrund holen (Liste weicht).
+  document.body.classList.add("show-viewer");
   if (!isDoc) {
     if (!cy) { initCy(); showOverview(); }
     else cy.resize();
   }
+}
+
+/** Mobil: zurück zur Trefferliste (Viewer weicht). Auf Desktop wirkungslos. */
+function showResultList() {
+  document.body.classList.remove("show-viewer");
 }
 
 // ── Filter füllen ────────────────────────────────────────────────────────────
@@ -637,11 +644,16 @@ try {
   await initDb(bytes);
   await populateFilters();
 
-  $("search-form").addEventListener("submit", (ev) => { ev.preventDefault(); runSearch(); });
+  // Suche/Filter führen auf Mobil zurück zur Trefferliste (sonst bliebe der
+  // Viewer im Vordergrund und die neuen Treffer wären unsichtbar).
+  $("search-form").addEventListener("submit", (ev) => {
+    ev.preventDefault(); showResultList(); runSearch();
+  });
   for (const id of ["f-thema", "f-antrag", "f-year", "f-type", "f-ort", "f-sort"])
-    $(id).addEventListener("change", runSearch);
+    $(id).addEventListener("change", () => { showResultList(); runSearch(); });
   $("tab-doc").addEventListener("click", () => activateTab("doc"));
   $("tab-net").addEventListener("click", () => activateTab("net"));
+  $("mobile-back").addEventListener("click", showResultList);
 
   await runSearch();   // Startansicht: neueste Dokumente
   $("boot").hidden = true;
