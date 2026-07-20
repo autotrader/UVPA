@@ -45,3 +45,10 @@ node_modules/
 
 # Enrichment-Laufzeitzustand (Batch-IDs), nicht die .md-Ergebnisse selbst
 enrichment/.batch_state.json
+
+# Lokale Geheimnisse — NIE ins Repo (Site-Passwort für Tests, API-Keys etc.)
+.secrets
+.secrets/
+*.local.env
+.env
+.env.*
