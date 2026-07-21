@@ -46,6 +46,10 @@ node_modules/
 # Enrichment-Laufzeitzustand (Batch-IDs), nicht die .md-Ergebnisse selbst
 enrichment/.batch_state.json
 
+# Geschäftsverteilungsplan der Stadt: enthält Durchwahlnummern und wird
+# bewusst NICHT veröffentlicht (liegt hier nur als lokale Arbeitskopie).
+organigramm_stadt_erlangen_*.pdf
+
 # Lokale Geheimnisse — NIE ins Repo (Site-Passwort für Tests, API-Keys etc.)
 .secrets
 .secrets/
