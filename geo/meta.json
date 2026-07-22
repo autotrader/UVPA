@@ -17,7 +17,7 @@
     }
   },
   "amtlich": {
-    "abgerufen": "2026-07-22T07:31:10+0200",
+    "abgerufen": "2026-07-22T08:25:23+0200",
     "stand": "2025-10-20",
     "quelle": "Stadt Erlangen, Statistik und Stadtforschung (Open Data)",
     "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Statistik/Statistik%20Open%20Data/bezirke_strassenabschnitte_2025.10.xlsx",
@@ -26,13 +26,14 @@
     "bezirke": 39
   },
   "beiraete": {
-    "abgerufen": "2026-07-22T07:31:10+0200",
+    "abgerufen": "2026-07-22T08:25:23+0200",
     "quelle": "Stadt Erlangen, Statistik und Stadtforschung (Open Data)",
     "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Statistik/Statistik%20Open%20Data/Elangen_2015_Vektorgeometrie_Stadtteilbeiratsgebiete.zip",
     "lizenz": "Datenlizenz Deutschland Namensnennung 2.0 (dl-de/by-2.0)",
     "stand_geometrie": "2015",
-    "namen_nach": "Satzung über Orts- und Stadtteilbeiräte, Fassung vom 20.02.2020",
-    "gebiete": 13,
+    "namen_nach": "Satzung über Orts- und Stadtteilbeiräte, Fassung ab 01.05.2026",
+    "hinweis": "Anger und Bruck sind seit 01.05.2026 getrennte Stadtteilbeiräte; getrennte Geometrie liegt nicht vor, beide führen daher auf das gemeinsame Gebiet.",
+    "gebiete": 14,
     "zuordnung": {
       "eindeutig": 871,
       "mehrere": 37,

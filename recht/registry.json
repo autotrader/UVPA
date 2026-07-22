@@ -230,5 +230,17 @@
     "dateien": [
       { "titel": "Wasserschutzgebiet Erlangen-Möhrendorf-Bubenreuth", "pfad": "recht/wasserschutzgebiet-2_250_00_wasserschutz_erlangen_moehrendorf_bubenreuth.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/250.00_wasserschutz_erlangen_moehrendorf_bubenreuth.pdf" }
     ]
+  },
+  {
+    "id": "orts-und-stadtteilbeiraete",
+    "title": "Orts- und Stadtteilbeiräte (Satzung)",
+    "beschreibung": "Satzung der Stadt Erlangen über Orts- und Stadtteilbeiräte: welche Beiräte es gibt und welche Gebiete sie vertreten. Die seit 01.05.2026 geltende Fassung teilt den bisherigen Stadtteilbeirat Anger/Bruck in zwei eigene Beiräte und enthält erstmals einen Plan der Gebietsgrenzen als Bestandteil der Satzung.",
+    "themen": ["Haushalt & Verwaltung"],
+    "quelle_url": "https://erlangen.de/aktuelles/orts-und-stadtteilbeiraete",
+    "dateien": [
+      { "titel": "Satzung über Orts- und Stadtteilbeiräte – Fassung ab 01.05.2026", "pfad": "recht/orts-und-stadtteilbeiraete_140_00_orts_stadtteilbeiraete_2026.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/140_00_orts_stadtteilbeiraete_2026.pdf" },
+      { "titel": "Plan der Beiratsgebiete – Anlage zu § 1, ab 01.05.2026", "pfad": "recht/orts-und-stadtteilbeiraete_140_00_orts_stadtteilbeiraete_plan_2026.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/140_00_orts_stadtteilbeiraete_plan_2026.pdf", "hinweis": "Rasterkarte; die Gebietsgrenzen liegen nicht als Geodatei vor." },
+      { "titel": "Satzung über Orts- und Stadtteilbeiräte – Fassung vom 20.02.2020 (bis 30.04.2026)", "pfad": "recht/orts-und-stadtteilbeiraete_140_00_orts_stadtteilbeiraete.pdf", "quelle_url": "https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Stadtrecht/140_00_orts_stadtteilbeiraete.pdf" }
+    ]
   }
 ]

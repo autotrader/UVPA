@@ -78,19 +78,31 @@ jede Straße in `strassen.json` trägt `beirat` (größter Anteil) und `beiraete
 
 **Die Quellenlage ist unbequem und das sollte man wissen:**
 
-Die Satzung über Orts- und Stadtteilbeiräte (140.00, Fassung vom 20.02.2020)
-nennt in § 1 nur die *Namen* — „Für die Stadtteile Innenstadt, Alterlangen,
-Ost, Süd, Anger/Bruck und Büchenbach besteht je ein Stadtteilbeirat" — und
-keine Grenzen. Auch auf erlangen.de steht keine Gebietsbeschreibung. Die
-einzige amtliche Geometrie ist das Open-Data-Shapefile **von 2015**, und das
-trägt Arbeitsnamen (`SB Zentrum/Nord`, `SB West`, `SB Regnitz`, `SB Süd-Ost`),
-weil die Stadtteilbeiräte erst am 27.07.2016 beschlossen wurden.
+Die Satzung über Orts- und Stadtteilbeiräte (140.00) nennt in § 1 die *Namen*
+der Beiräte. Seit der Fassung **ab 01.05.2026** verweist § 1 Abs. 3 zusätzlich
+auf einen Plan, „der Bestandteil dieser Satzung ist" — die Gebiete sind damit
+erstmals rechtsverbindlich dargestellt. Der Plan ist allerdings eine
+**Rasterkarte**; als Geodatei veröffentlicht die Stadt die Beiratsgebiete
+weiterhin nur im Stand **von 2015**, und diese Datei trägt Arbeitsnamen
+(`SB Zentrum/Nord`, `SB West`, `SB Regnitz`, `SB Süd-Ost`), weil die
+Stadtteilbeiräte erst am 27.07.2016 beschlossen wurden.
 
-Die Übersetzung dieser Arbeitsnamen auf die heutigen steht in
-`tools/fetch_geodata.py` (`BEIRAT_NAMEN`) und ist dort einzeln begründet.
-Vier Zuordnungen sind durch den Inhalt erzwungen (SB West enthält die
-Büchenbach-Bezirke, SB Regnitz die Alterlangen-Bezirke, …), `SB Süd-Ost` →
-Süd ist zusätzlich extern bestätigt (Rathenau, Röthelheim, Sebaldus).
+Die Übersetzung dieser Arbeitsnamen steht in `tools/fetch_geodata.py`
+(`BEIRAT_NAMEN`). Sie ist durch die **Nummerierung belegt**: Der Plan von 2026
+führt dieselben Nummern wie die Geometriedatei von 2015 — 08 SB Innenstadt,
+09 SB Alterlangen, 10 SB Ost, 11 SB Süd, 13 SB Büchenbach gegenüber
+08 SB Zentrum/Nord, 09 SB Regnitz, 10 SB Ost, 11 SB Süd-Ost, 13 SB West.
+Beide Satzungsfassungen und der Plan liegen unter
+`recht/orts-und-stadtteilbeiraete_*.pdf` im Repository.
+
+**Anger und Bruck sind seit 01.05.2026 getrennte Stadtteilbeiräte** (vorher
+ein gemeinsamer „Anger/Bruck", Nummer 12; jetzt 14 SB Anger und 15 SB Bruck).
+Eine getrennte Geometrie gibt es dafür nicht. Straßen in diesem Gebiet sind
+deshalb **beiden** Beiräten zugeordnet: Wer nach Bruck filtert, bekommt das
+gemeinsame Gebiet und damit zu viel — aber nichts fehlt. Eine Grenze zu
+erfinden wäre die schlechtere Wahl. Sobald die Stadt getrennte Geometrie
+veröffentlicht, wird aus dem Paar in `BEIRAT_NAMEN` ein einzelner Name je
+Gebiet, sonst ändert sich nichts.
 
 **Belege für die Umrechnung und die Zuordnung** — beides wurde gegen
 unabhängige Quellen geprüft, nicht nur plausibel gemacht:
@@ -113,12 +125,8 @@ Stand: 871 Straßen eindeutig, 37 über eine Grenze, 6 ohne OSM-Geometrie.
 
 ## Offen
 
-- **Aktualität der Beiratsgebiete.** Ob die Grenzen seit 2015 unverändert
-  sind, lässt sich aus den veröffentlichten Daten nicht belegen. Dafür
-  spricht, dass Zahl (13) und Zuschnitt der Ortsbeiratsgebiete exakt zur
-  heutigen Satzung passen. Wer Gewissheit braucht, fragt bei Statistik und
-  Stadtforschung nach einer aktuellen Fassung.
-- **Satzung über Orts- und Stadtteilbeiräte (140.00)** fehlt in
-  `recht/registry.json`; das auf erlangen.de verlinkte PDF liefert 404. Der
-  Satzungstext ist aber über das Ratsinformationssystem erreichbar
-  (Vorlage `kvonr=2133817`, Anlage „Satzungsentwurf").
+- **Getrennte Geometrie für Anger und Bruck.** Der einzige offene Punkt, der
+  die Zuordnung wirklich verbessern würde. Anzufragen bei Statistik und
+  Stadtforschung — zusammen mit der Frage, ob die Gebiete der übrigen
+  Beiräte seit 2015 unverändert sind. Dafür spricht, dass der Plan von 2026
+  dieselbe Nummerierung und denselben Zuschnitt zeigt.

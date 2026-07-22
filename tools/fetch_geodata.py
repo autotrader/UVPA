@@ -63,26 +63,32 @@ BEIRAT_URL = ("https://erlangen.de/uwao-api/faila/files/bypath/Dokumente/Statist
 # Die Geometriedatei stammt von 2015 und trägt Arbeitsnamen: die
 # Stadtteilbeiräte wurden erst am 27.07.2016 beschlossen und 2017
 # konstituiert. Die Zuordnung auf die heutigen Namen nach § 1 der Satzung
-# über Orts- und Stadtteilbeiräte (i. d. F. vom 20.02.2020):
+# über Orts- und Stadtteilbeiräte.
 #
-#   * Die sieben Ortsbeiräte tragen schon 2015 ihre heutigen Namen.
-#   * SB West enthält die Bezirke 76/77/78 Büchenbach -> Büchenbach.
-#   * SB Regnitz enthält 10 Heiligenloh, 11 Alterlangen, 12 Steinforst
-#     -> Alterlangen.
-#   * SB Tal/Anger/Bruck enthält 40 Anger -> Anger/Bruck.
-#   * SB Zentrum/Nord enthält 01 Altstadt, 02 Markgrafenstadt,
-#     03 Rathausplatz -> Innenstadt.
-#   * SB Süd-Ost enthält 30 Röthelheim, 32 Sebaldus, 41 Rathenau — genau die
-#     Bezirke, die auch außerhalb der Stadtverwaltung dem Stadtteilbeirat Süd
-#     zugeschrieben werden -> Süd.
-#   * SB Ost heißt unverändert Ost.
+# Die Nummerierung belegt die Übersetzung: der Plan, der seit 01.05.2026
+# Bestandteil der Satzung ist (recht/orts-und-stadtteilbeiraete_…_plan_2026.pdf),
+# führt dieselben Nummern wie die Geometriedatei von 2015 —
+# 08 SB Innenstadt, 09 SB Alterlangen, 10 SB Ost, 11 SB Süd, 13 SB Büchenbach
+# gegenüber 08 SB Zentrum/Nord, 09 SB Regnitz, 10 SB Ost, 11 SB Süd-Ost,
+# 13 SB West. Die sieben Ortsbeiräte (01–07) tragen ohnehin unverändert
+# ihre Namen.
+#
+# Einzige inhaltliche Änderung: die alte Nummer 12 „SB Tal/Anger/Bruck" ist
+# entfallen und in 14 SB Anger und 15 SB Bruck geteilt. Eine getrennte
+# Geometrie dafür veröffentlicht die Stadt nicht — der Plan ist eine
+# Rasterkarte, und das Geodatenangebot führt die Beiratsgebiete weiterhin nur
+# im Stand von 2015. Straßen in diesem Gebiet werden deshalb BEIDEN Beiräten
+# zugeordnet: Wer nach Bruck filtert, bekommt das gemeinsame Gebiet Anger und
+# Bruck und damit zu viel, aber nichts fehlt. Eine Grenze zu erfinden wäre die
+# schlechtere Wahl. Sobald die Stadt getrennte Geometrie veröffentlicht, wird
+# hier aus dem Paar ein einzelner Name je Gebiet.
 BEIRAT_NAMEN = {
     "SB Zentrum/Nord": "Stadtteilbeirat Innenstadt",
     "SB Regnitz": "Stadtteilbeirat Alterlangen",
     "SB Ost": "Stadtteilbeirat Ost",
     "SB Süd-Ost": "Stadtteilbeirat Süd",
     "SB Südost": "Stadtteilbeirat Süd",
-    "SB Tal/Anger/Bruck": "Stadtteilbeirat Anger/Bruck",
+    "SB Tal/Anger/Bruck": ["Stadtteilbeirat Anger", "Stadtteilbeirat Bruck"],
     "SB West": "Stadtteilbeirat Büchenbach",
     "OB Eltersdorf": "Ortsbeirat Eltersdorf",
     "OB Frauenaurach": "Ortsbeirat Frauenaurach",
@@ -333,25 +339,29 @@ def fetch_beiraete(out: Path) -> dict:
     gebiete, features = [], []
     for rings_gk, attr in zip(shapes, attrs):
         roh = norm(attr.get("NAME", ""))
-        name = BEIRAT_NAMEN.get(roh)
-        if name is None:
+        namen = BEIRAT_NAMEN.get(roh, roh)
+        if roh not in BEIRAT_NAMEN:
             log(f"  Warnung: unbekanntes Beiratsgebiet „{roh}“ — bleibt unbenannt.")
-            name = roh
+        # ein Gebiet kann für mehrere Beiräte stehen, solange keine getrennte
+        # Geometrie vorliegt (derzeit Anger und Bruck)
+        namen = [namen] if isinstance(namen, str) else list(namen)
+        label = " / ".join(namen)
         rings = [[[round(v, PRECISION) for v in geom.gk4_to_wgs84(x, y)]
                   for x, y in ring] for ring in rings_gk]
-        gebiete.append((name, rings, geom.bbox(rings)))
+        gebiete.append((namen, label, rings, geom.bbox(rings)))
         features.append({
             "type": "Feature",
-            "properties": {"name": name, "name_2015": roh, "nummer": attr.get("NUMMER", "")},
+            "properties": {"name": label, "beiraete": namen, "name_2015": roh,
+                           "nummer": attr.get("NUMMER", "")},
             "geometry": {"type": "Polygon", "coordinates": rings},
         })
     write_json(out / "beiraete.geojson",
                {"type": "FeatureCollection", "features": features}, compact=True)
 
     def finde(lon: float, lat: float) -> str | None:
-        for name, rings, (x0, y0, x1, y1) in gebiete:
+        for _namen, label, rings, (x0, y0, x1, y1) in gebiete:
             if x0 <= lon <= x1 and y0 <= lat <= y1 and geom.contains(rings, lon, lat):
-                return name
+                return label
         return None
 
     log("  Straßengeometrie für die Zuordnung …")
@@ -370,10 +380,14 @@ def fetch_beiraete(out: Path) -> dict:
             b = finde(p["lon"], p["lat"])
             if b:
                 counts[b] = counts.get(b, 0) + 1
-    return {"gebiete": [g[0] for g in gebiete], "treffer": treffer}
+    # Gebiets-Label → die Beiräte, für die es steht (meist genau einer)
+    label_zu_beiraeten = {g[1]: g[0] for g in gebiete}
+    return {"gebiete": sorted({n for g in gebiete for n in g[0]}),
+            "treffer": treffer, "label_zu_beiraeten": label_zu_beiraeten}
 
 
-def apply_beiraete(amt: dict, treffer: dict[str, dict[str, int]]) -> dict[str, int]:
+def apply_beiraete(amt: dict, treffer: dict[str, dict[str, int]],
+                   label_zu_beiraeten: dict[str, list[str]]) -> dict[str, int]:
     """Schreibt beirat/beiraete in jede Straße des amtlichen Verzeichnisses."""
     stats = {"eindeutig": 0, "mehrere": 0, "ohne": 0}
     for s in amt["strassen"]:
@@ -385,10 +399,17 @@ def apply_beiraete(amt: dict, treffer: dict[str, dict[str, int]]) -> dict[str, i
         anteile = {b: n / total for b, n in counts.items()}
         top = max(anteile, key=anteile.get)
         s["beirat"] = top
-        s["beiraete"] = sorted((b for b, a in anteile.items() if a >= BEIRAT_MIN_ANTEIL),
-                               key=lambda b: -anteile[b])
+        # Gebiete, in denen ein nennenswerter Teil der Straße liegt, auf die
+        # zugehörigen Beiräte auflösen — ein Gebiet kann für zwei stehen.
+        s["beiraete"] = [b for label, a in sorted(anteile.items(), key=lambda kv: -kv[1])
+                         if a >= BEIRAT_MIN_ANTEIL
+                         for b in label_zu_beiraeten.get(label, [label])]
         s["beirat_anteil"] = round(anteile[top], 3)
-        stats["eindeutig" if len(s["beiraete"]) == 1 else "mehrere"] += 1
+        # „eindeutig" heißt: die Straße liegt in genau einem Gebiet. Dass ein
+        # Gebiet für zwei Beiräte steht, ist eine Lücke der Geodaten, kein
+        # Grenzverlauf der Straße.
+        stats["eindeutig" if len([a for a in anteile.values() if a >= BEIRAT_MIN_ANTEIL]) == 1
+              else "mehrere"] += 1
     return stats
 
 
@@ -453,7 +474,7 @@ def main() -> int:
         if not args.skip_beirat:
             log("Stadt Erlangen: Gebiete der Orts- und Stadtteilbeiräte …")
             bei = fetch_beiraete(out)
-            stats = apply_beiraete(amt, bei["treffer"])
+            stats = apply_beiraete(amt, bei["treffer"], bei["label_zu_beiraeten"])
             amt["beiraete"] = bei["gebiete"]
             meta["beiraete"] = {
                 "abgerufen": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
@@ -461,7 +482,10 @@ def main() -> int:
                 "quelle_url": BEIRAT_URL,
                 "lizenz": "Datenlizenz Deutschland Namensnennung 2.0 (dl-de/by-2.0)",
                 "stand_geometrie": "2015",
-                "namen_nach": "Satzung über Orts- und Stadtteilbeiräte, Fassung vom 20.02.2020",
+                "namen_nach": "Satzung über Orts- und Stadtteilbeiräte, Fassung ab 01.05.2026",
+                "hinweis": ("Anger und Bruck sind seit 01.05.2026 getrennte Stadtteilbeiräte; "
+                            "getrennte Geometrie liegt nicht vor, beide führen daher auf das "
+                            "gemeinsame Gebiet."),
                 "gebiete": len(bei["gebiete"]),
                 "zuordnung": stats,
             }
