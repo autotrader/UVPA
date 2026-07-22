@@ -59,6 +59,12 @@ jobs:
         continue-on-error: true
         run: python tools/fetch_beratungsfolge.py
 
+      # Tagesordnungen der Nachbargremien (Stadtrat, Bauausschuss). Nur
+      # Metadaten, keine Dokumente — ein Request je Sitzung, inkrementell.
+      - name: Refresh Tagesordnungen der Nachbargremien
+        continue-on-error: true
+        run: python tools/fetch_gremien_tops.py
+
       - name: Commit new documents
         run: |
           git config user.name "github-actions[bot]"

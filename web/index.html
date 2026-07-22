@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex, nofollow">
   <title>UVPA Erlangen — Dokumentensuche</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="style.css?v=17">
+  <link rel="stylesheet" href="style.css?v=18">
   <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.34.0/dist/cytoscape.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
@@ -89,6 +89,7 @@
         <button id="tab-doc" class="active" type="button">Dokument</button>
         <button id="tab-net" type="button">Netzwerk</button>
         <button id="tab-map" type="button">Karte</button>
+        <button id="tab-gremien" type="button">Andere Gremien</button>
       </nav>
 
       <div id="panel-doc" class="panel">
@@ -149,6 +150,10 @@
           </p>
         </div>
       </div>
+
+      <div id="panel-gremien" class="panel" hidden>
+        <div id="gremien-view"></div>
+      </div>
     </section>
   </main>
 
@@ -157,6 +162,6 @@
     <span id="version"></span>
   </footer>
 
-  <script type="module" src="app.js?v=17"></script>
+  <script type="module" src="app.js?v=18"></script>
 </body>
 </html>

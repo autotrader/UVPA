@@ -44,6 +44,9 @@ jobs:
           mkdir -p _site/geo
           cp web/index.html web/style.css web/app.js _site/
           cp graph.db _site/graph.db
+          # Tagesordnungen der Nachbargremien — das Frontend lädt die Datei
+          # direkt, sie liegt bewusst nicht in der graph.db.
+          cp gremien_tops.json _site/ 2>/dev/null || echo "gremien_tops.json fehlt — Abschnitt bleibt leer"
           # Geodaten für den Karten-Tab (aus dem Wochen-Sync im Repo)
           cp geo/*.geojson geo/meta.json _site/geo/ 2>/dev/null || \
             echo "::warning::Keine Geodaten in geo/ — der Karten-Tab bleibt leer."

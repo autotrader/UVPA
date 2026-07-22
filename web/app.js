@@ -13,7 +13,7 @@ import * as duckdb from "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.33.1
 // Sichtbare App-Version (Fußzeile). Beim Ausliefern zusammen mit dem
 // ?v=…-Cache-Parameter in index.html erhöhen, damit Version und
 // tatsächlich geladener Code übereinstimmen.
-const APP_VERSION = "v17 · 2026-07-22";
+const APP_VERSION = "v18 · 2026-07-22";
 
 const $ = (id) => document.getElementById(id);
 const status = (msg) => { $("statusbar").textContent = msg; };
@@ -921,9 +921,127 @@ async function focusStreet(name) {
   status(`„${name}“ auf der Karte.`);
 }
 
+// ── Andere Gremien ───────────────────────────────────────────────────────────
+// Was der UVPA berät, entscheidet oft der Stadtrat, und Bauthemen laufen
+// parallel im Bauausschuss. gremien_tops.json (tools/fetch_gremien_tops.py)
+// hält deren Tagesordnungen — bewusst nur Metadaten, keine Dokumente: die
+// Volltexte des Bauausschusses allein wären ein Vielfaches dieses Repos.
+// Die Datei liegt neben index.html und nicht in der graph.db, weil sie ohne
+// Volltextindex auskommt und der Abschnitt zum Blättern gedacht ist.
+
+let fremdeTops = null;
+let gremienFilter = { gremium: "", jahr: "", nurUvpa: false };
+
+async function ladeFremdeTops() {
+  if (fremdeTops !== null) return fremdeTops;
+  try {
+    const r = await fetch("gremien_tops.json");
+    if (r.ok) return (fremdeTops = await r.json());
+  } catch { /* Datei fehlt */ }
+  return (fremdeTops = false);
+}
+
+/**
+ * Vorlagen, die auch im UVPA lagen.
+ *
+ * beratungsfolge.json ist genau danach indiziert: Schlüssel sind die kvonr aller
+ * Vorlagen, die im UVPA behandelt wurden. Ein Tagesordnungspunkt des Stadtrats
+ * mit derselben kvonr ist also nachweislich dieselbe Sache — kein Ratespiel über
+ * Titelähnlichkeit.
+ */
+let uvpaVorlagen = null;
+async function ladeUvpaVorlagen() {
+  if (uvpaVorlagen) return uvpaVorlagen;
+  try {
+    const r = await fetch("beratungsfolge.json");
+    uvpaVorlagen = r.ok ? new Set(Object.keys(await r.json())) : new Set();
+  } catch { uvpaVorlagen = new Set(); }
+  return uvpaVorlagen;
+}
+
+async function renderFremdeGremien() {
+  const daten = await ladeFremdeTops();
+  const ziel = $("gremien-view");
+  if (!daten) {
+    ziel.innerHTML = `<p class="hint">Die Tagesordnungen der anderen Gremien fehlen —
+      sie entstehen mit <code>tools/fetch_gremien_tops.py</code> und werden beim
+      Deploy neben die Seite kopiert.</p>`;
+    return;
+  }
+  await ladeUvpaVorlagen();
+
+  const alle = daten.tops.filter((t) => !t.routine);
+  const jahre = [...new Set(alle.map((t) => (t.datum || "").slice(0, 4)))].sort().reverse();
+  const gremien = Object.values(daten.gremien);
+
+  const gefiltert = alle.filter((t) =>
+    (!gremienFilter.gremium || t.gremium === gremienFilter.gremium) &&
+    (!gremienFilter.jahr || (t.datum || "").startsWith(gremienFilter.jahr)) &&
+    (!gremienFilter.nurUvpa || (t.kvonr && uvpaVorlagen.has(t.kvonr))));
+
+  ziel.innerHTML = `<div class="gremien-kopf">
+    <p class="hint">Tagesordnungspunkte aus ${escHtml(gremien.join(" und "))} der
+      Wahlperiode ${escHtml(daten.wahlperiode?.label || "")}. Erfasst sind Titel,
+      Beschluss und Vorlagennummer — <strong>keine Dokumente</strong>. Für den Volltext
+      führt der Link ins Ratsinformationssystem.
+      Wiederkehrende Formalpunkte (Anfragen, Mitteilungen) sind ausgeblendet.</p>
+    <div class="gremien-filter">
+      <label>Gremium <select id="gf-gremium">
+        <option value="">alle</option>
+        ${gremien.map((g) => `<option${g === gremienFilter.gremium ? " selected" : ""}>${escHtml(g)}</option>`).join("")}
+      </select></label>
+      <label>Jahr <select id="gf-jahr">
+        <option value="">alle</option>
+        ${jahre.map((j) => `<option${j === gremienFilter.jahr ? " selected" : ""}>${escHtml(j)}</option>`).join("")}
+      </select></label>
+      <label><input type="checkbox" id="gf-uvpa"${gremienFilter.nurUvpa ? " checked" : ""}>
+        Nur mit Bezug zum UVPA</label>
+    </div>
+  </div>
+  <div id="gremien-liste"></div>
+  <p class="ml-credit">Quelle: ${escHtml(daten.quelle || "Ratsinformationssystem der Stadt Erlangen")}
+    · Stand ${escHtml(daten.stand || "")}</p>`;
+
+  $("gremien-liste").innerHTML = gefiltert.length
+    ? gefiltert.slice(0, 400).map(gremienEintrag).join("") +
+      (gefiltert.length > 400
+        ? `<p class="hint">… ${gefiltert.length - 400} weitere. Filter enger stellen.</p>` : "")
+    : `<p class="hint">Keine Einträge für diese Auswahl.</p>`;
+
+  $("gf-gremium").addEventListener("change", (e) => {
+    gremienFilter.gremium = e.target.value; renderFremdeGremien();
+  });
+  $("gf-jahr").addEventListener("change", (e) => {
+    gremienFilter.jahr = e.target.value; renderFremdeGremien();
+  });
+  $("gf-uvpa").addEventListener("change", (e) => {
+    gremienFilter.nurUvpa = e.target.checked; renderFremdeGremien();
+  });
+
+  status(`${gefiltert.length} Tagesordnungspunkte aus ${gremien.length} Gremien` +
+    (gremienFilter.nurUvpa ? " mit Bezug zum UVPA." : "."));
+}
+
+function gremienEintrag(t) {
+  const strassen = (t.strassen || []).slice(0, 4)
+    .map((s) => `<span class="gr-strasse">${escHtml(s)}</span>`).join("");
+  return `<div class="gr-eintrag">
+    <div class="gr-kopf">
+      <span class="gr-datum">${escHtml(t.datum || "")}</span>
+      <span class="gr-gremium">${escHtml(t.gremium)}</span>
+      ${t.top ? `<span class="gr-nr">TOP ${escHtml(t.top)}</span>` : ""}
+      ${t.kvonr && uvpaVorlagen?.has(t.kvonr)
+        ? `<span class="gr-uvpa" title="Dieselbe Vorlage lag auch im UVPA">auch im UVPA</span>` : ""}
+    </div>
+    <a class="gr-titel" href="${escHtml(t.url)}" target="_blank" rel="noopener">${escHtml(t.titel)}</a>
+    ${t.beschluss ? `<div class="gr-beschluss">${escHtml(t.beschluss)}</div>` : ""}
+    ${strassen ? `<div class="gr-marker">${strassen}</div>` : ""}
+  </div>`;
+}
+
 // ── Tabs ─────────────────────────────────────────────────────────────────────
 
-const TABS = ["doc", "net", "map"];
+const TABS = ["doc", "net", "map", "gremien"];
 
 async function activateTab(which) {
   for (const t of TABS) {
@@ -938,6 +1056,8 @@ async function activateTab(which) {
   } else if (which === "map") {
     if (!map) await initMap();
     else map.invalidateSize();
+  } else if (which === "gremien") {
+    await renderFremdeGremien();
   }
 }
 

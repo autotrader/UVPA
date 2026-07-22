@@ -169,6 +169,38 @@ main { flex: 1; display: flex; min-height: 0; }
   background: var(--page); border-left: 3px solid var(--c-top); border-radius: 0 6px 6px 0;
   font-size: .85rem; line-height: 1.5; color: var(--ink);
 }
+/* Andere Gremien: Tagesordnungspunkte von Stadtrat und Bauausschuss */
+#panel-gremien { overflow-y: auto; padding: .9rem 1rem 2rem; }
+.gremien-kopf .hint { margin-bottom: .6rem; }
+.gremien-filter {
+  display: flex; gap: .9rem; flex-wrap: wrap; align-items: center;
+  margin-bottom: .9rem; font-size: .8rem; color: var(--ink-2);
+}
+.gremien-filter select { font-size: .8rem; padding: .18rem .3rem; }
+.gr-eintrag {
+  background: var(--surface-1); border: 1px solid var(--hairline);
+  border-radius: 7px; padding: .5rem .7rem; margin-bottom: .4rem;
+}
+.gr-kopf { display: flex; gap: .45rem; flex-wrap: wrap; align-items: baseline; font-size: .72rem; }
+.gr-datum { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.gr-gremium { color: var(--c-top); font-weight: 700; }
+.gr-nr { color: var(--muted); }
+.gr-uvpa {
+  color: var(--c-plan); border: 1px solid var(--c-plan); border-radius: 999px;
+  padding: 0 .35rem; font-weight: 600;
+}
+.gr-titel {
+  display: block; margin-top: .15rem; font-size: .88rem; line-height: 1.4;
+  font-weight: 600; color: var(--ink); text-decoration: none;
+}
+.gr-titel:hover { text-decoration: underline; }
+.gr-beschluss { margin-top: .2rem; font-size: .78rem; color: var(--ink-2); }
+.gr-marker { margin-top: .3rem; display: flex; gap: .25rem; flex-wrap: wrap; }
+.gr-strasse {
+  font-size: .68rem; padding: .05rem .4rem; border-radius: 999px;
+  border: 1px solid var(--hairline); background: var(--page); color: var(--ink-2);
+}
+
 /* Beratungsfolge — eingeklappt, weil sie nur bei Mehrfachbefassung interessiert */
 .beratungsfolge { margin: .6rem 0 .2rem; }
 .beratungsfolge summary {
